@@ -29,11 +29,6 @@ var (
 	fenceLine    = regexp.MustCompile("^\\s*(```|~~~)")
 )
 
-// Words that are legitimately doubled often enough to ignore.
-var repetitionAllowlist = map[string]bool{
-	"that": true, "had": true, "is": true,
-}
-
 type literalPattern struct {
 	needle string
 	msg    string
@@ -44,18 +39,10 @@ var literalPatterns = []literalPattern{
 	{"---", "literal triple hyphen (use em dash —)"},
 	{"''", "double apostrophe"},
 	{"``", "double backtick"},
-	{"(www", "missing space/scheme before www"},
-	{")www", "missing space after closing paren"},
 	{" )", "space before closing paren"},
 	{"]()", "empty link"},
 	{"![](", "empty image"},
 	{"](//", "protocol-relative link"},
-	{"](/wiki/", "wrong wiki path"},
-	{"](wiki/", "wrong wiki path"},
-	{"](image/", "wrong image path"},
-	{"](images/", "wrong image path"},
-	{"](/image/", "wrong image path"},
-	{"](/images/", "wrong image path"},
 	{` " ](`, "quote glued to link"},
 }
 
@@ -129,7 +116,7 @@ func (markdownProseHygiene) Check(f *MarkdownFile, _ *MarkdownContext) []Diagnos
 			}
 			a := strings.ToLower(prose[idx[i-1][0]:idx[i-1][1]])
 			b := strings.ToLower(prose[idx[i][0]:idx[i][1]])
-			if a != b || repetitionAllowlist[a] {
+			if a != b {
 				continue
 			}
 			diags = append(diags, Diagnostic{

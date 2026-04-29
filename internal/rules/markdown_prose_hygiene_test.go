@@ -22,15 +22,6 @@ func TestProseHygiene_RepeatedWordCaseInsensitive(t *testing.T) {
 	}
 }
 
-func TestProseHygiene_RepeatedWordAllowlist(t *testing.T) {
-	for _, w := range []string{"that that", "had had", "is is"} {
-		diags := markdownProseHygiene{}.Check(mdFile(w+" thing\n"), nil)
-		if len(diags) != 0 {
-			t.Fatalf("%q should be allowlisted, got %v", w, messages(diags))
-		}
-	}
-}
-
 func TestProseHygiene_LiteralPatterns(t *testing.T) {
 	cases := []struct {
 		in, contains string
