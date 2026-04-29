@@ -106,7 +106,7 @@ func (m *markdownSpelling) Check(f *MarkdownFile, ctx *MarkdownContext) []Diagno
 func (m *markdownSpelling) init(cfg *config.Config) {
 	path, err := exec.LookPath("aspell")
 	if err != nil {
-		fmt.Println("lint: aspell not installed - skipping spell-checking. (brew install aspell)")
+		fmt.Println("hugolint: aspell not installed - skipping spell-checking. (brew install aspell)")
 		m.enabled = false
 		return
 	}

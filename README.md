@@ -2,7 +2,7 @@
 the sanest linter in the world
 
 ## CONFIGURATION
-
+Put this in the folder from where you run `hugolint md` or `hugolint build`
 ```yaml
 paths:
   markdown_root: content # folder containing your content .md files
@@ -55,16 +55,12 @@ index_pages:
 
 ## WHAT DOES IT DO?
 
-### Build lints
-[x] Check that all relative links lead somewhere. 
-  [x] <a> links
-  [x] <img> src
-  [x] Even <link>, <script src>, <source src>, <video>/<audio> src
-[x] Duplicate id= attributes per page
+### Build lints (`hugolint build`)
+[x] Check that all relative links lead somewhere (`<a>` href, `<img>` src, `<link>`, `<script src>`, `<video>/<audio>` etc.)
 [x] Run an HTML tidy/validator pass to catch escaping errors and malformed markup
 [x] Detect custom shortcode-like fragments
   - {{<
-  -	>}}
+  -	\>}}
   - {{%
   - %}}
 [x] Unparsed Markdown link/image delimiters leaking as literal text
@@ -73,24 +69,24 @@ index_pages:
   - [http
   - ]http
 [x] HTML/comment markers that should be stripped or transformed
-  - <!--
+  - `<!--`
   - -->
   - <--
   - <—
   - —>
-  - <del>
-  - <q>
-  - </q>
-  - </q<
+  - `<del>`
+  - `<q>`
+  - `</q>`
+  - `</q<`
 
-### Markdown lints
+### Markdown lints (`hugolint md`)
 [x] Spelling linting with hunspell or aspell with an dict.txt
-[x] Frontmatter validity beyond presence: date is a real ISO date; type ∈ allowed set; topics is a list, not a string; entries match a known taxonomy.
+[x] Frontmatter validity
 [x] Balance linting to match parens and quotes
-[x] Don't allow relative  links
+[x] Don't allow relative links
 [x] Check for malformed URLs
-[x] Code fences without a language tag — kills syntax highlighting.
-[x] Image alt text: flag ![](url) but ![ ](url), ![image](url), ![img](url) are equally useless
+[x] Code fences missing a language tag
+[x] Image alt text missing ![](url) but ![ ](url), ![image](url), ![img](url) 
 [x] Word repitition like "the the"
 [x] Doubled / malformed punctuation & dashes
   - —— (double em dash)

@@ -63,5 +63,5 @@ func loadConfig(path string) (*config.Config, error) {
 }
 
 func usage() {
-	fmt.Fprintln(os.Stderr, "usage: lint md [dir] | lint build [dir]")
+	fmt.Fprintln(os.Stderr, "usage: hugolint md [dir] | hugolint build [dir]")
 }
