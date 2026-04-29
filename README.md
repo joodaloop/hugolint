@@ -53,6 +53,8 @@ index_pages:
     title: { type: string, required: true }
 ```
 
+## WHAT DOES IT DO?
+
 ### Build lints (`hugolint build`)
 - Check that all relative links lead somewhere (`<a>` href, `<img>` src, `<link>`, `<script src>`, `<video>/<audio>` etc.)
 - Run an HTML tidy/validator pass to catch escaping errors and malformed markup
@@ -77,26 +79,10 @@ index_pages:
   - `</q>`
   - `</q<`
 
-### Markdown lints (`hugolint md`)
-- Spelling linting with hunspell or aspell with an dict.txt
-- Best practices Markdown
-  - Warn on h1s (they should be in title: )
-  - Warn on underscore based formatting
-  - Headings must start at the beginning of the line
-  - Warn on lack of space after #, list markers, and > on new lines
-- Frontmatter validity
-- URL checks
-  - mailto: addresses that aren’t valid email syntax
-  - Don't allow http:// 
-  - Catch protocol-relative URLs (//example.com) where you meant https://
-  - Empty URLs
-  - Don't allow relative links
-  - Reversed link syntax ()[]
-  - Check for malformed URLs
-- Balance linting to match parens and quotes
-- Spaces inside emphasis markers
-- Code fences missing closers, or a language tag
-- Image alt text missing in `![](url)`, `![ ](url)`, `![image](url)`, `![img](url) `
+### Correctness checks
+- Frontmatter lint with strict warnings for anything that doesn't match the declared schema *in any way*
+- Spellcheck with aspell with an personal dictionary
+- Balancing parens, quotes, formatting (**)
 - Word repitition like "the the"
 - Doubled / malformed punctuation & dashes
   - —— (double em dash)
@@ -116,8 +102,29 @@ index_pages:
   - ](// — protocol-relative link
   -  " ]( — quote glued to link
 
-## WHAT DOES IT DO?
+### Markdown lints (`hugolint md`)
+- Headings
+  - Warn on h1s (they should be in title: )
+  - Headings must start at the beginning of the line
+  - Warn on lack of space after # on a new line
+- Best practices Markdown
+  - Warn on lack of space list markers, and > on new lines
+  - Warn on underscore based formatting
+- URLs
+  - mailto: addresses that aren’t valid email syntax
+  - Don't allow http:// 
+  - Catch protocol-relative URLs (//example.com) where you meant https://
+  - Empty URLs
+  - Don't allow relative links
+  - Reversed link syntax ()[]
+  - Check for malformed URLs
+- Spaces inside emphasis markers
+- Code fences missing closers, or a language tag
+- Image alt text missing in `![](url)`, `![ ](url)`, `![image](url)`, `![img](url) `
 
+## FUTURE IMPROVEMENTS
+- Split into markdown and plaintext contents to run lints better
+- Check site build for orphans
 - Unbalanced **/backticks
 - URLs with whitespace, smart quotes, or trailing punctuation accidentally included
 - Duplicate trailing slashes, double slashes in paths
