@@ -17,16 +17,15 @@ type markdownProseHygiene struct{}
 func (markdownProseHygiene) ID() string { return "prose-hygiene" }
 
 var (
-	wordSplit    = regexp.MustCompile(`[A-Za-z]+`)
-	mdLinkURL    = regexp.MustCompile(`\]\([^)]*\)`)
-	bareURL      = regexp.MustCompile(`https?://\S+`)
-	htmlTag      = regexp.MustCompile(`<[^>]+>`)
-	inlineCode   = regexp.MustCompile("`[^`]*`")
-	spacedColon  = regexp.MustCompile(` : `)
-	plusMinus    = regexp.MustCompile(` \+-|\s-\+`)
-	strayAfterQP = regexp.MustCompile(`"\)[ );,]|"\)$`)
-	hrLine       = regexp.MustCompile(`^\s*-{3,}\s*$`)
-	fenceLine    = regexp.MustCompile("^\\s*(```|~~~)")
+	wordSplit   = regexp.MustCompile(`[A-Za-z]+`)
+	mdLinkURL   = regexp.MustCompile(`\]\([^)]*\)`)
+	bareURL     = regexp.MustCompile(`https?://\S+`)
+	htmlTag     = regexp.MustCompile(`<[^>]+>`)
+	inlineCode  = regexp.MustCompile("`[^`]*`")
+	spacedColon = regexp.MustCompile(` : `)
+	plusMinus   = regexp.MustCompile(` \+-|\s-\+`)
+	hrLine      = regexp.MustCompile(`^\s*-{3,}\s*$`)
+	fenceLine   = regexp.MustCompile("^\\s*(```|~~~)")
 )
 
 type literalPattern struct {
@@ -114,6 +113,9 @@ func (markdownProseHygiene) Check(f *MarkdownFile, _ *MarkdownContext) []Diagnos
 			if !strings.ContainsAny(gap, " \t") {
 				continue
 			}
+			if strings.ContainsAny(gap, ".!?,;:&([])") {
+				continue
+			}
 			a := strings.ToLower(prose[idx[i-1][0]:idx[i-1][1]])
 			b := strings.ToLower(prose[idx[i][0]:idx[i][1]])
 			if a != b {
@@ -157,12 +159,6 @@ func (markdownProseHygiene) Check(f *MarkdownFile, _ *MarkdownContext) []Diagnos
 			diags = append(diags, Diagnostic{
 				Path: f.Path, Line: line, Rule: "prose-hygiene",
 				Message: "malformed plus-minus (use ±)",
-			})
-		}
-		if strayAfterQP.MatchString(text) {
-			diags = append(diags, Diagnostic{
-				Path: f.Path, Line: line, Rule: "prose-hygiene",
-				Message: `closing paren attached to stray quote/punct`,
 			})
 		}
 	}
