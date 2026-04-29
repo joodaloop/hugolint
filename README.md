@@ -56,6 +56,7 @@ index_pages:
 ## WHAT DOES IT DO?
 
 ### Build lints (`hugolint build`)
+[ ] Check site build for orphans
 - Check that all relative links lead somewhere (`<a>` href, `<img>` src, `<link>`, `<script src>`, `<video>/<audio>` etc.)
 - Run an HTML tidy/validator pass to catch escaping errors and malformed markup
 - Detect custom shortcode-like fragments
@@ -79,11 +80,57 @@ index_pages:
   - `</q>`
   - `</q<`
 
-### Correctness checks
-- Frontmatter lint with strict warnings for anything that doesn't match the declared schema *in any way*
-- Spellcheck with aspell with an personal dictionary
-- Balancing parens, quotes, formatting (**)
+
+### With-markdown AST 
+- Warn on H1s (they should be in title: )
+- Warn on any heading more than 4
+- URLs
+  - mailto: addresses that aren’t valid email syntax
+  - Don't allow http:// 
+  - Empty URLs or empty URL text
+  - Don't allow relative links
+  - Smart quotes inside URL
+  - [text](url with space)
+  - URLs with whitespace, smart quotes, or trailing punctuation accidentally included
+  - Image alt text missing in `![](url)`, `![ ](url)`, `![image](url)`, `![img](url) `
+  - ](// — protocol-relative link
+- Spellcheck on prose with aspell with an personal dictionary
+
+<!--- Walk the AST.
+- For link/image/autolink nodes → pull URL from the node, run the URL-validation
+function.
+- For text nodes (skipping code/link descendants) → run the URL-finding regex on
+the text, then run the same URL-validation function on each match.-->
+
+### Post-markdown checks
+- Headings must start at the beginning of the line
+- Discourage underscore based formatting
+- Discourage setext headings and trailing hash headings
+- Lack of space after # on a new line
+- Inconsistent indent in nested list (2 vs 3 vs 4 spaces)
+- Triple-star `***word*` — ambiguous, often not what the author wanted.
+- Emphasis adjacent to alphanumerics: `foo**bar**baz` doesn't render as
+  emphasis in CommonMark (flanking rules); a frequent surprise.
+- URLs
+  - " ]( — quote glued to link
+  - Smart quotes inside URL.
+  - Duplicate trailing slashes, double slashes in paths
+  - [text](non-URL character)
+  - [text] (url)
+  - [text](url "title)
+  - ![alt(image.png)
+  - Reversed link syntax ()[]
+  - Check for malformed URLs
+  - Catch protocol-relative URLs (//example.com) where you meant https://
+  - URLs with whitespace, smart quotes, or trailing punctuation accidentally included
+- Warn on lack of space list markers, and > on new lines
+- Balancing parens, quotes, formatting (** \`) and shortcode stuff ({{<)
+- `{{<shortcode>}}` without the required spaces
+- Spaces inside emphasis markers
+
+### Correctness
 - Word repitition like "the the"
+- Frontmatter lint with strict warnings for anything that doesn't match the declared schema *in any way*
 - Doubled / malformed punctuation & dashes
   - —— (double em dash)
   - ——– (em dash + en dash)
@@ -97,34 +144,3 @@ index_pages:
   - " — floating/orphaned quote
   - : — spaced colon
   -  +- /  -+ — malformed plus-minus
-  - ]() — empty link
-  - ![]( — empty image
-  - ](// — protocol-relative link
-  -  " ]( — quote glued to link
-
-### Markdown lints (`hugolint md`)
-- Headings
-  - Warn on h1s (they should be in title: )
-  - Headings must start at the beginning of the line
-  - Warn on lack of space after # on a new line
-- Best practices Markdown
-  - Warn on lack of space list markers, and > on new lines
-  - Warn on underscore based formatting
-- URLs
-  - mailto: addresses that aren’t valid email syntax
-  - Don't allow http:// 
-  - Catch protocol-relative URLs (//example.com) where you meant https://
-  - Empty URLs
-  - Don't allow relative links
-  - Reversed link syntax ()[]
-  - Check for malformed URLs
-- Spaces inside emphasis markers
-- Code fences missing closers, or a language tag
-- Image alt text missing in `![](url)`, `![ ](url)`, `![image](url)`, `![img](url) `
-
-## FUTURE IMPROVEMENTS
-- Split into markdown and plaintext contents to run lints better
-- Check site build for orphans
-- Unbalanced **/backticks
-- URLs with whitespace, smart quotes, or trailing punctuation accidentally included
-- Duplicate trailing slashes, double slashes in paths
