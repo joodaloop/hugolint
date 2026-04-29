@@ -1,0 +1,367 @@
+package rules
+
+import (
+	"bytes"
+	"fmt"
+	"sort"
+	"time"
+
+	"github.com/goccy/go-yaml"
+
+	"github.com/joodaloop/lint/internal/config"
+)
+
+func init() {
+	RegisterMarkdown(&markdownFrontmatter{})
+}
+
+type markdownFrontmatter struct{}
+
+func (markdownFrontmatter) ID() string { return "frontmatter" }
+
+func (markdownFrontmatter) Check(f *MarkdownFile, ctx *MarkdownContext) []Diagnostic {
+	if ctx == nil || ctx.Config == nil {
+		return nil
+	}
+	_, schema := ctx.Config.SchemaFor(f.Path)
+	fmBody, fmLine, ok := extractFrontmatter(f.Content)
+	if schema == nil {
+		if !ok {
+			return nil
+		}
+		var parsed map[string]any
+		if err := yaml.Unmarshal(fmBody, &parsed); err != nil {
+			return []Diagnostic{{
+				Path: f.Path, Line: fmLine, Rule: "frontmatter",
+				Message: fmt.Sprintf("invalid YAML: %v", err),
+			}}
+		}
+		return unknownFieldDiagnostics(f.Path, fmLine, parsed, nil)
+	}
+	if !ok {
+		return []Diagnostic{{
+			Path: f.Path, Line: 1, Rule: "frontmatter",
+			Message: "missing YAML frontmatter",
+		}}
+	}
+
+	var parsed map[string]any
+	if err := yaml.Unmarshal(fmBody, &parsed); err != nil {
+		return []Diagnostic{{
+			Path: f.Path, Line: fmLine, Rule: "frontmatter",
+			Message: fmt.Sprintf("invalid YAML: %v", err),
+		}}
+	}
+
+	var diags []Diagnostic
+
+	// Required + per-field validation, in deterministic order.
+	keys := make([]string, 0, len(schema))
+	for k := range schema {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+
+	for _, name := range keys {
+		spec := schema[name]
+		val, present := parsed[name]
+		if !present {
+			if spec.Required {
+				diags = append(diags, Diagnostic{
+					Path: f.Path, Line: fmLine, Rule: "frontmatter",
+					Message: fmt.Sprintf("missing required field %q", name),
+				})
+			}
+			continue
+		}
+		if msg := validate(name, val, spec); msg != "" {
+			diags = append(diags, Diagnostic{
+				Path: f.Path, Line: fmLine, Rule: "frontmatter",
+				Message: msg,
+			})
+		}
+	}
+
+	// Unknown fields.
+	diags = append(diags, unknownFieldDiagnostics(f.Path, fmLine, parsed, schema)...)
+
+	return diags
+}
+
+// extractFrontmatter returns the body between the opening and closing `---`
+// fences, plus the line number of the opening fence.
+func extractFrontmatter(content []byte) ([]byte, int, bool) {
+	if !bytes.HasPrefix(content, []byte("---\n")) && !bytes.HasPrefix(content, []byte("---\r\n")) {
+		return nil, 0, false
+	}
+	rest := content[4:]
+	if bytes.HasPrefix(content, []byte("---\r\n")) {
+		rest = content[5:]
+	}
+	end := bytes.Index(rest, []byte("\n---"))
+	if end < 0 {
+		return nil, 0, false
+	}
+	return rest[:end], 1, true
+}
+
+// stripFrontmatter returns content with any leading `---`-fenced YAML block
+// removed (the closing fence's trailing newline is consumed). If there's no
+// frontmatter, the original content is returned.
+func stripFrontmatter(content []byte) []byte {
+	if !bytes.HasPrefix(content, []byte("---\n")) && !bytes.HasPrefix(content, []byte("---\r\n")) {
+		return content
+	}
+	rest := content[4:]
+	if bytes.HasPrefix(content, []byte("---\r\n")) {
+		rest = content[5:]
+	}
+	end := bytes.Index(rest, []byte("\n---"))
+	if end < 0 {
+		return content
+	}
+	after := rest[end+len("\n---"):]
+	// Skip the rest of the closing fence line.
+	if i := bytes.IndexByte(after, '\n'); i >= 0 {
+		return after[i+1:]
+	}
+	return nil
+}
+
+func validate(name string, val any, spec config.FieldSpec) string {
+	switch spec.Type {
+	case "string":
+		s, ok := val.(string)
+		if !ok {
+			return fmt.Sprintf("field %q: expected string, got %s", name, kindOf(val))
+		}
+		if spec.Min != nil {
+			min, ok := asFloat(spec.Min)
+			if !ok {
+				return fmt.Sprintf("field %q: invalid min constraint %v for string field", name, spec.Min)
+			}
+			if len([]rune(s)) < int(min) {
+				return fmt.Sprintf("field %q: length %d below min %d", name, len([]rune(s)), int(min))
+			}
+		}
+		if spec.Max != nil {
+			max, ok := asFloat(spec.Max)
+			if !ok {
+				return fmt.Sprintf("field %q: invalid max constraint %v for string field", name, spec.Max)
+			}
+			if len([]rune(s)) > int(max) {
+				return fmt.Sprintf("field %q: length %d above max %d", name, len([]rune(s)), int(max))
+			}
+		}
+	case "number":
+		n, ok := asFloat(val)
+		if !ok {
+			return fmt.Sprintf("field %q: expected number, got %s", name, kindOf(val))
+		}
+		if spec.Min != nil {
+			min, ok := asFloat(spec.Min)
+			if !ok {
+				return fmt.Sprintf("field %q: invalid min constraint %v for number field", name, spec.Min)
+			}
+			if n < min {
+				return fmt.Sprintf("field %q: %v below min %v", name, n, min)
+			}
+		}
+		if spec.Max != nil {
+			max, ok := asFloat(spec.Max)
+			if !ok {
+				return fmt.Sprintf("field %q: invalid max constraint %v for number field", name, spec.Max)
+			}
+			if n > max {
+				return fmt.Sprintf("field %q: %v above max %v", name, n, max)
+			}
+		}
+	case "bool":
+		if _, ok := val.(bool); !ok {
+			return fmt.Sprintf("field %q: expected bool, got %s", name, kindOf(val))
+		}
+	case "date":
+		t, ok := parseDate(val)
+		if !ok {
+			return fmt.Sprintf("field %q: expected date, got %s (%v)", name, kindOf(val), val)
+		}
+		if spec.Min != nil {
+			min, ok := parseDate(spec.Min)
+			if !ok {
+				return fmt.Sprintf("field %q: invalid min constraint %v for date field", name, spec.Min)
+			}
+			if t.Before(min) {
+				return fmt.Sprintf("field %q: %s before min %s", name, t.Format("2006-01-02"), min.Format("2006-01-02"))
+			}
+		}
+		if spec.Max != nil {
+			max, ok := parseDate(spec.Max)
+			if !ok {
+				return fmt.Sprintf("field %q: invalid max constraint %v for date field", name, spec.Max)
+			}
+			if t.After(max) {
+				return fmt.Sprintf("field %q: %s after max %s", name, t.Format("2006-01-02"), max.Format("2006-01-02"))
+			}
+		}
+	case "enum":
+		s, ok := val.(string)
+		if !ok {
+			return fmt.Sprintf("field %q: expected enum string, got %s", name, kindOf(val))
+		}
+		if !contains(spec.Values, s) {
+			return fmt.Sprintf("field %q: %q not in allowed values %v", name, s, spec.Values)
+		}
+	case "list":
+		items, ok := val.([]any)
+		if !ok {
+			return fmt.Sprintf("field %q: expected list, got %s", name, kindOf(val))
+		}
+		for i, it := range items {
+			if msg := validateItem(name, i, it, spec); msg != "" {
+				return msg
+			}
+		}
+	case "":
+		// No type specified — only required-presence is enforced.
+	default:
+		return fmt.Sprintf("field %q: unknown spec type %q", name, spec.Type)
+	}
+	return ""
+}
+
+func validateItem(name string, i int, val any, spec config.FieldSpec) string {
+	switch spec.Items {
+	case "enum":
+		s, ok := val.(string)
+		if !ok {
+			return fmt.Sprintf("field %q[%d]: expected enum string, got %s", name, i, kindOf(val))
+		}
+		if !contains(spec.Values, s) {
+			return fmt.Sprintf("field %q[%d]: %q not in allowed values %v", name, i, s, spec.Values)
+		}
+	case "string":
+		if _, ok := val.(string); !ok {
+			return fmt.Sprintf("field %q[%d]: expected string, got %s", name, i, kindOf(val))
+		}
+	case "number":
+		if _, ok := asFloat(val); !ok {
+			return fmt.Sprintf("field %q[%d]: expected number, got %s", name, i, kindOf(val))
+		}
+	case "date":
+		if _, ok := parseDate(val); !ok {
+			return fmt.Sprintf("field %q[%d]: expected date, got %s (%v)", name, i, kindOf(val), val)
+		}
+	case "":
+		// No item type specified.
+	default:
+		return fmt.Sprintf("field %q: unknown items type %q", name, spec.Items)
+	}
+	return ""
+}
+
+var dateLayouts = []string{
+	"2006-01-02",
+	time.RFC3339,
+	"2006-01-02T15:04:05",
+	"2006-01-02 15:04:05",
+}
+
+func isDate(v any) bool {
+	_, ok := parseDate(v)
+	return ok
+}
+
+func kindOf(v any) string {
+	if v == nil {
+		return "null"
+	}
+	switch v.(type) {
+	case string:
+		return "string"
+	case bool:
+		return "bool"
+	case int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64, float32, float64:
+		return "number"
+	case time.Time:
+		return "date"
+	case []any:
+		return "list"
+	case map[string]any:
+		return "map"
+	}
+	return fmt.Sprintf("%T", v)
+}
+
+func unknownFieldDiagnostics(path string, line int, parsed map[string]any, schema map[string]config.FieldSpec) []Diagnostic {
+	unknown := make([]string, 0)
+	for name := range parsed {
+		if schema != nil {
+			if _, ok := schema[name]; ok {
+				continue
+			}
+		}
+		unknown = append(unknown, name)
+	}
+	sort.Strings(unknown)
+	var diags []Diagnostic
+	for _, name := range unknown {
+		diags = append(diags, Diagnostic{
+			Path: path, Line: line, Rule: "frontmatter",
+			Message: fmt.Sprintf("unknown field %q", name),
+		})
+	}
+	return diags
+}
+
+func parseDate(v any) (time.Time, bool) {
+	switch x := v.(type) {
+	case time.Time:
+		return x, true
+	case string:
+		for _, layout := range dateLayouts {
+			if t, err := time.Parse(layout, x); err == nil {
+				return t, true
+			}
+		}
+	}
+	return time.Time{}, false
+}
+
+func asFloat(v any) (float64, bool) {
+	switch x := v.(type) {
+	case int:
+		return float64(x), true
+	case int8:
+		return float64(x), true
+	case int16:
+		return float64(x), true
+	case int32:
+		return float64(x), true
+	case int64:
+		return float64(x), true
+	case uint:
+		return float64(x), true
+	case uint8:
+		return float64(x), true
+	case uint16:
+		return float64(x), true
+	case uint32:
+		return float64(x), true
+	case uint64:
+		return float64(x), true
+	case float32:
+		return float64(x), true
+	case float64:
+		return x, true
+	}
+	return 0, false
+}
+
+func contains(xs []string, s string) bool {
+	for _, x := range xs {
+		if x == s {
+			return true
+		}
+	}
+	return false
+}
