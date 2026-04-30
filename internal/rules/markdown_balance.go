@@ -21,7 +21,7 @@ type openDelim struct {
 
 func (markdownBalance) Check(f *MarkdownFile, _ *MarkdownContext) []Diagnostic {
 	var diags []Diagnostic
-	content := stripFrontmatter(f.Content)
+	content := f.Body
 	scanner := bufio.NewScanner(bytes.NewReader(content))
 	scanner.Buffer(make([]byte, 64*1024), 1024*1024)
 
@@ -29,7 +29,7 @@ func (markdownBalance) Check(f *MarkdownFile, _ *MarkdownContext) []Diagnostic {
 	quoteOpen := false
 	quoteLine := 0
 
-	line := 0
+	line := f.BodyStartLine - 1
 	for scanner.Scan() {
 		line++
 		text := scanner.Text()

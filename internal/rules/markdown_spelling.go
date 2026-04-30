@@ -10,8 +10,6 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/goccy/go-yaml"
-
 	"github.com/joodaloop/hugolint/internal/config"
 )
 
@@ -51,16 +49,13 @@ func (m *markdownSpelling) Check(f *MarkdownFile, ctx *MarkdownContext) []Diagno
 		return nil
 	}
 
-	body := stripFrontmatter(f.Content)
-	values := frontmatterStrings(f.Content)
-	input := append([]byte(strings.Join(values, "\n")+"\n"), body...)
-
+	body := f.Body
 	if m.suffixStrip != nil {
-		input = m.suffixStrip.ReplaceAll(input, []byte(""))
+		body = m.suffixStrip.ReplaceAll(body, []byte(""))
 	}
 
 	cmd := exec.Command(m.aspellPath, "--mode=markdown", "--lang=en", "list")
-	cmd.Stdin = bytes.NewReader(input)
+	cmd.Stdin = bytes.NewReader(body)
 	out, err := cmd.Output()
 	if err != nil {
 		return []Diagnostic{{Path: f.Path, Rule: "spelling", Message: fmt.Sprintf("aspell failed: %v", err)}}
@@ -84,9 +79,9 @@ func (m *markdownSpelling) Check(f *MarkdownFile, ctx *MarkdownContext) []Diagno
 	wordRe := buildWordRegex(unknown)
 	var diags []Diagnostic
 	seen := map[string]bool{}
-	lineScanner := bufio.NewScanner(bytes.NewReader(f.Content))
+	lineScanner := bufio.NewScanner(bytes.NewReader(f.Body))
 	lineScanner.Buffer(make([]byte, 64*1024), 1024*1024)
-	line := 0
+	line := f.BodyStartLine - 1
 	for lineScanner.Scan() {
 		line++
 		for _, m := range wordRe.FindAllString(lineScanner.Text(), -1) {
@@ -133,40 +128,6 @@ func (m *markdownSpelling) init(cfg *config.Config) {
 	m.suffixStrip = regexp.MustCompile(`-(` + strings.Join(quoted, "|") + `)\b`)
 
 	m.enabled = true
-}
-
-// frontmatterStrings parses YAML frontmatter and returns the string values
-// (recursively, including strings inside lists). Keys and non-string scalars
-// are dropped.
-func frontmatterStrings(content []byte) []string {
-	body, _, ok := extractFrontmatter(content)
-	if !ok {
-		return nil
-	}
-	var parsed map[string]any
-	if err := yaml.Unmarshal(body, &parsed); err != nil {
-		return nil
-	}
-	var out []string
-	for _, v := range parsed {
-		collectStrings(v, &out)
-	}
-	return out
-}
-
-func collectStrings(v any, out *[]string) {
-	switch x := v.(type) {
-	case string:
-		*out = append(*out, x)
-	case []any:
-		for _, it := range x {
-			collectStrings(it, out)
-		}
-	case map[string]any:
-		for _, val := range x {
-			collectStrings(val, out)
-		}
-	}
 }
 
 func buildWordRegex(words map[string]bool) *regexp.Regexp {

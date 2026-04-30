@@ -62,12 +62,14 @@ index_pages:
 - [x] Check for presense of essential meta tags
 - [x] Check that all internal links point to an existing file (`<a>` href, `<img>` src, `<link>`, `<script src>`, `<video>/<audio>` etc.)
 - [ ] Run an HTML tidy/validator pass to catch escaping errors and malformed markup
-- [ ] Detect custom shortcode-like fragments
+  - [ ]	Check for a valid DOCTYPE, unclosed tags, and correct tag pairing.
+  - [ ] Validates that IDs are unique across the page
+- [x] Detect custom shortcode-like fragments
     - {{<
     -	\>}}
     - {{%
     - %}}
-- [ ] HTML/comment markers that should be stripped or transformed
+- [x] HTML/comment markers that should be stripped or transformed
     - `<!--`
     - -->
     - <--
@@ -77,17 +79,6 @@ index_pages:
     - `<q>`
     - `</q>`
     - `</q<`
-•	Structure: Checks for a valid DOCTYPE, unclosed tags, and correct tag pairing.
-•	Attributes: Ensures attributes are in lowercase, values are quoted (single or double), and there are no duplicate attributes on a single tag.
-•	ID/Class: Validates that IDs are unique across the page and warns against using "ad" keywords in IDs/classes (which can be blocked by ad-blockers).
-•	Essential Tags: Checks for the presence of the <title> tag and the lang attribute on the <html> tag.
-•	Media: Ensures <img> tags have alt attributes and that src attributes are not empty.
-•	Best Practices: Disallows obsolete HTML tags (like <font> or <center>) and warns against inline styles or scripts.
-•	Auto-Correction: Automatically fixes mixed-up tags (e.g., <b><i>text</b></i> becomes <b><i>text</i></b>) and adds missing end tags.
-•	Encoding: Converts characters into correct HTML entities and ensures consistent line endings.
-•	Accessibility (Basic): Flags missing alt text and summary attributes for tables.
-•	Proprietary Tags: Detects and reports non-standard or proprietary browser extensions.
-•	Cleaning: Removes "junk" code often left behind by Word or other visual editors.
 
 ### Raw body checks
 - [ ] Discourage Setext headings
@@ -98,7 +89,6 @@ index_pages:
 ### With-markdown AST 
 - [x] Warn on H1s (they should be in title: )
 - [x] Warn on any heading more than 4
-- [ ] Invisible characters
 - [ ] Too long link text, code formatting, bold, italic, etc.
 - [x] URLs
   - [x] Catch mailto: addresses that aren’t valid email syntax
@@ -106,25 +96,22 @@ index_pages:
   - [x] Empty URLs or empty URL text/alt
   - [x] Don't allow relative links
   - [x] Catch non-URL-safe characters inside URL
+  - [ ] Duplicate trailing slashes, double slashes in paths
   - [x] Discourage protocol-relative link
   - [x] Discourage spacing [ text ] in URL text
   - [x] Discourage and punctuation [documentation.](https://example.com) in URL text 
 
 
-### Post-AST checks
-- [ ] Broken Markdown
-  - [ ] Headings must start at the beginning of the line
-  - [ ] Lack of space after # on a new line
-  - [ ] Horizontal rule failures ( --on new lines)
-  - [ ] Failed list formatting (2 vs 3 vs 4 spaces)
-  - [ ] Triple-star `***word*` — ambiguous, often not what the author wanted.
-  - [ ]  \* \_ \# \[ \]
-  - [ ] Warn on lack of space after > on new lines
-  - [ ] Spaces inside emphasis markers
-  - [ ] Odd number of spaces/tabs
+### Non-AST checks
+- [x] Broken Markdown
+  - [x] Headings must start at the beginning of the line
+  - [x] Lack of space after # on a new line
+  - [x] Horizontal rule failures ( -- on new lines)
+  - [x] Triple-star `***word*` — ambiguous, often not what the author wanted.
+  - [x] Warn on lack of space after > on new lines
+  - [x] Spaces inside emphasis markers (** text **)
+  - [x] Odd number of spaces/tabs for lists
 - [ ] URLs
-  - [ ] Discourage bare URLs in prose
-  - [ ] " ]( — quote glued to link
   - [ ] (http
   - [ ] )http
   - [ ] [http
@@ -135,16 +122,17 @@ index_pages:
   - [ ] [text](url with space)
   - [ ] [text] (url)
   - [ ] [text](url "title)
+  - [ ] Discourage bare URLs in prose, they could start with either \n, " ", or "( but not []()"
+  - [ ] [text](/url-with space)
+  - [ ] [text] (/url)
   - [ ] ![alt(image.png)
   - [ ] Reversed link syntax ()[]
-  - [ ] Check for malformed URLs
-  - [ ] URLs with whitespace, smart quotes, or trailing punctuation accidentally included
 - [ ] Balancing parens, quotes, formatting (** \`~~) and shortcode delimiters ({{<)
-- [ ] `{{<shortcode>}}` without the required spaces
+- [ ] Invisible characters
+- [ ] `{{<shortcode>}}` without the required spaces `{{< shortcode >}}`
 - [ ] Spellcheck on prose with aspell with an personal dictionary
 - [ ] Word repetition like "the the"
 - [ ] Suffix handling (2nd, 50kg vs 50 kg)
-- [ ] Unparsed Markdown link/image delimiters leaking as literal text
 - [ ] Doubled / malformed punctuation & dashes
   - [ ] —— (double em dash)
   - [ ] ——– (em dash + en dash)

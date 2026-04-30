@@ -26,14 +26,35 @@ var (
 	plusMinus      = regexp.MustCompile(` \+-|\s-\+`)
 	hrLine         = regexp.MustCompile(`^\s*-{3,}\s*$`)
 	fenceLine      = regexp.MustCompile("^\\s*(```|~~~)")
-	underscoreEmph = regexp.MustCompile(`\s_{1,2}[^\s_][^_\n]*?_{1,2}(\s|[.,;:!?)\]]|$)`)
-	reversedLink   = regexp.MustCompile(`\([^)\n]*\)\[[^\]\n]*\]`)
-	bulletNoSpace  = regexp.MustCompile(`^ {0,3}[-+*][A-Za-z0-9]`)
-	emphasisLine   = regexp.MustCompile(`^ {0,3}\*[^*\s][^*]*\*`)
-	blockquoteNoSp = regexp.MustCompile(`^ {0,3}>[^\s>]`)
-	spacedEmph     = regexp.MustCompile(`\*+\s+\S[^*\n]*\S\s+\*+`)
-	listItemLine   = regexp.MustCompile(`^ {0,3}[-+*]\s`)
+	underscoreEmph  = regexp.MustCompile(`\s_{1,2}[^\s_][^_\n]*?_{1,2}(\s|[.,;:!?)\]]|$)`)
+	reversedLink    = regexp.MustCompile(`\([^)\n]*\)\[[^\]\n]*\]`)
+	bulletNoSpace   = regexp.MustCompile(`^ {0,3}[-+*][A-Za-z0-9]`)
+	emphasisLine    = regexp.MustCompile(`^ {0,3}\*[^*\s][^*]*\*`)
+	blockquoteNoSp  = regexp.MustCompile(`^ {0,3}>[^\s>]`)
+	spacedEmph      = regexp.MustCompile(`\*+\s+\S[^*\n]*\S\s+\*+`)
+	listItemLine    = regexp.MustCompile(`^ {0,3}[-+*]\s`)
+	headingIndented = regexp.MustCompile(`^[ \t]+#{1,6}[ \t]`)
+	headingNoSpace  = regexp.MustCompile(`^#{1,6}[^ \t#]`)
+	brokenHRDouble  = regexp.MustCompile(`^\s*--\s*$`)
+	tripleStarOpen  = regexp.MustCompile(`\*{3}[^\s*][^*\n]*\*`)
+	oddListIndent   = regexp.MustCompile(`^(?: |   )[-+*][ \t]`)
+	mixedDashes     = regexp.MustCompile(`\x{2014}\x{2013}|\x{2013}\x{2014}|[\x{2014}\x{2013}]{3,}`)
+	floatingQuote   = regexp.MustCompile(`(^|\s)"(\s|$)`)
+	shortcodeOpen   = regexp.MustCompile(`\{\{[<%][^\s<%}]`)
+	shortcodeClose  = regexp.MustCompile(`[^\s<%{][>%]\}\}`)
 )
+
+var invisibleChars = map[rune]string{
+	'\u200B': "zero-width space (U+200B)",
+	'\u200C': "zero-width non-joiner (U+200C)",
+	'\u200D': "zero-width joiner (U+200D)",
+	'\u200E': "left-to-right mark (U+200E)",
+	'\u200F': "right-to-left mark (U+200F)",
+	'\u2060': "word joiner (U+2060)",
+	'\uFEFF': "byte-order mark (U+FEFF)",
+	'\u00AD': "soft hyphen (U+00AD)",
+	'\u00A0': "non-breaking space (U+00A0)",
+}
 
 type literalPattern struct {
 	needle string
@@ -45,6 +66,7 @@ var literalPatterns = []literalPattern{
 	{"---", "literal triple hyphen (use em dash —)"},
 	{"''", "double apostrophe"},
 	{"``", "double backtick"},
+	{",,", "double comma"},
 	{" )", "space before closing paren"},
 	{"](//", "protocol-relative link"},
 	{` " ](`, "quote glued to link"},
@@ -52,29 +74,16 @@ var literalPatterns = []literalPattern{
 
 func (markdownProseHygiene) Check(f *MarkdownFile, _ *MarkdownContext) []Diagnostic {
 	var diags []Diagnostic
-	scanner := bufio.NewScanner(bytes.NewReader(f.Content))
+	scanner := bufio.NewScanner(bytes.NewReader(f.Body))
 	scanner.Buffer(make([]byte, 64*1024), 1024*1024)
 
 	inFence := false
-	inFrontmatter := false
 	inRawBlock := "" // "style" or "script" while inside; "" otherwise
-	line := 0
+	line := f.BodyStartLine - 1
 
 	for scanner.Scan() {
 		line++
 		text := scanner.Text()
-
-		// Frontmatter: opens with `---` on line 1, closes at next `---`.
-		if line == 1 && strings.TrimSpace(text) == "---" {
-			inFrontmatter = true
-			continue
-		}
-		if inFrontmatter {
-			if strings.TrimSpace(text) == "---" {
-				inFrontmatter = false
-			}
-			continue
-		}
 
 		// Fenced code blocks.
 		if fenceLine.MatchString(text) {
@@ -132,6 +141,17 @@ func (markdownProseHygiene) Check(f *MarkdownFile, _ *MarkdownContext) []Diagnos
 			})
 		}
 
+		// Invisible / zero-width characters.
+		for _, r := range text {
+			if name, ok := invisibleChars[r]; ok {
+				diags = append(diags, Diagnostic{
+					Path: f.Path, Line: line, Rule: "prose-hygiene",
+					Message: fmt.Sprintf("invisible character: %s", name),
+				})
+				break
+			}
+		}
+
 		// Literal substring patterns.
 		for _, p := range literalPatterns {
 			if strings.Contains(text, p.needle) {
@@ -158,6 +178,24 @@ func (markdownProseHygiene) Check(f *MarkdownFile, _ *MarkdownContext) []Diagnos
 			diags = append(diags, Diagnostic{
 				Path: f.Path, Line: line, Rule: "prose-hygiene",
 				Message: "spaced colon ( : )",
+			})
+		}
+		if mixedDashes.MatchString(text) {
+			diags = append(diags, Diagnostic{
+				Path: f.Path, Line: line, Rule: "prose-hygiene",
+				Message: "malformed dash sequence (mixed em/en or 3+ dashes)",
+			})
+		}
+		if floatingQuote.MatchString(text) {
+			diags = append(diags, Diagnostic{
+				Path: f.Path, Line: line, Rule: "prose-hygiene",
+				Message: `floating/orphaned quote (")`,
+			})
+		}
+		if shortcodeOpen.MatchString(text) || shortcodeClose.MatchString(text) {
+			diags = append(diags, Diagnostic{
+				Path: f.Path, Line: line, Rule: "prose-hygiene",
+				Message: "Hugo shortcode missing required spaces ({{< name >}})",
 			})
 		}
 		if plusMinus.MatchString(text) {
@@ -195,6 +233,41 @@ func (markdownProseHygiene) Check(f *MarkdownFile, _ *MarkdownContext) []Diagnos
 				Path: f.Path, Line: line, Rule: "prose-hygiene",
 				Message: "underscore emphasis (use * instead)",
 			})
+		}
+		if headingIndented.MatchString(text) {
+			diags = append(diags, Diagnostic{
+				Path: f.Path, Line: line, Rule: "prose-hygiene",
+				Message: "heading must start at the beginning of the line",
+			})
+		}
+		if headingNoSpace.MatchString(text) {
+			diags = append(diags, Diagnostic{
+				Path: f.Path, Line: line, Rule: "prose-hygiene",
+				Message: "missing space after # in heading",
+			})
+		}
+		if brokenHRDouble.MatchString(text) {
+			diags = append(diags, Diagnostic{
+				Path: f.Path, Line: line, Rule: "prose-hygiene",
+				Message: "broken horizontal rule (use --- not --)",
+			})
+		}
+		if oddListIndent.MatchString(text) {
+			diags = append(diags, Diagnostic{
+				Path: f.Path, Line: line, Rule: "prose-hygiene",
+				Message: "odd indentation before list marker",
+			})
+		}
+		for _, m := range tripleStarOpen.FindAllStringIndex(text, -1) {
+			end := m[1]
+			if end < len(text) && text[end] == '*' {
+				continue
+			}
+			diags = append(diags, Diagnostic{
+				Path: f.Path, Line: line, Rule: "prose-hygiene",
+				Message: "ambiguous triple-star emphasis (***word*)",
+			})
+			break
 		}
 	}
 	return diags
