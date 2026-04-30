@@ -21,6 +21,7 @@ func TestProseHygiene_Cases(t *testing.T) {
 		{"foo --- bar\n", "literal triple hyphen", true},
 		{"it's '' a thing\n", "double apostrophe", true},
 		{"`` two\n", "double backtick", true},
+		{"foo.. bar\n", "double period", true},
 		{"foo,, bar\n", "double comma", true},
 		{"hi (there )\n", "space before closing paren", true},
 		{"link [foo](//x.com)\n", "protocol-relative link", true},

@@ -17,15 +17,15 @@ type markdownProseHygiene struct{}
 func (markdownProseHygiene) ID() string { return "prose-hygiene" }
 
 var (
-	wordSplit      = regexp.MustCompile(`[A-Za-z]+`)
-	mdLinkURL      = regexp.MustCompile(`\]\([^)]*\)`)
-	bareURL        = regexp.MustCompile(`https?://\S+`)
-	htmlTag        = regexp.MustCompile(`<[^>]+>`)
-	inlineCode     = regexp.MustCompile("`[^`]*`")
-	spacedColon    = regexp.MustCompile(` : `)
-	plusMinus      = regexp.MustCompile(` \+-|\s-\+`)
-	hrLine         = regexp.MustCompile(`^\s*-{3,}\s*$`)
-	fenceLine      = regexp.MustCompile("^\\s*(```|~~~)")
+	wordSplit       = regexp.MustCompile(`[A-Za-z]+`)
+	mdLinkURL       = regexp.MustCompile(`\]\([^)]*\)`)
+	bareURL         = regexp.MustCompile(`https?://\S+`)
+	htmlTag         = regexp.MustCompile(`<[^>]+>`)
+	inlineCode      = regexp.MustCompile("`[^`]*`")
+	spacedColon     = regexp.MustCompile(` : `)
+	plusMinus       = regexp.MustCompile(` \+-|\s-\+`)
+	hrLine          = regexp.MustCompile(`^\s*-{3,}\s*$`)
+	fenceLine       = regexp.MustCompile("^\\s*(```|~~~)")
 	underscoreEmph  = regexp.MustCompile(`\s_{1,2}[^\s_][^_\n]*?_{1,2}(\s|[.,;:!?)\]]|$)`)
 	reversedLink    = regexp.MustCompile(`\([^)\n]*\)\[[^\]\n]*\]`)
 	bulletNoSpace   = regexp.MustCompile(`^ {0,3}[-+*][A-Za-z0-9]`)
@@ -67,6 +67,7 @@ var literalPatterns = []literalPattern{
 	{"''", "double apostrophe"},
 	{"``", "double backtick"},
 	{",,", "double comma"},
+	{".. ", "double period"},
 	{" )", "space before closing paren"},
 	{"](//", "protocol-relative link"},
 	{` " ](`, "quote glued to link"},

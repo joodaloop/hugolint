@@ -151,27 +151,6 @@ func TestFrontmatter_UnknownFieldDeterministic(t *testing.T) {
 	}
 }
 
-func TestExtractFrontmatter(t *testing.T) {
-	body, line, ok := extractFrontmatter([]byte("---\ntitle: x\n---\nrest\n"))
-	if !ok || line != 1 || string(body) != "title: x" {
-		t.Errorf("got body=%q line=%d ok=%v", body, line, ok)
-	}
-	if _, _, ok := extractFrontmatter([]byte("no fm")); ok {
-		t.Error("expected no frontmatter")
-	}
-}
-
-func TestStripFrontmatter(t *testing.T) {
-	got := stripFrontmatter([]byte("---\ntitle: x\n---\nbody\n"))
-	if string(got) != "body\n" {
-		t.Errorf("got %q", got)
-	}
-	got = stripFrontmatter([]byte("body only\n"))
-	if string(got) != "body only\n" {
-		t.Errorf("got %q", got)
-	}
-}
-
 func TestFrontmatter_ID(t *testing.T) {
 	if (markdownFrontmatter{}).ID() != "frontmatter" {
 		t.Fatal("wrong ID")

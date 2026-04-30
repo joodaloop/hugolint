@@ -89,23 +89,6 @@ func (markdownFrontmatter) Check(f *FrontmatterFile, ctx *FrontmatterContext) []
 	return diags
 }
 
-// extractFrontmatter returns the body between the opening and closing `---`
-// fences, plus the line number of the opening fence.
-func extractFrontmatter(content []byte) ([]byte, int, bool) {
-	if !bytes.HasPrefix(content, []byte("---\n")) && !bytes.HasPrefix(content, []byte("---\r\n")) {
-		return nil, 0, false
-	}
-	rest := content[4:]
-	if bytes.HasPrefix(content, []byte("---\r\n")) {
-		rest = content[5:]
-	}
-	end := bytes.Index(rest, []byte("\n---"))
-	if end < 0 {
-		return nil, 0, false
-	}
-	return rest[:end], 1, true
-}
-
 // SplitFrontmatter parses leading YAML frontmatter and returns the raw YAML
 // (without fences), the body after the closing fence, the number of lines
 // the frontmatter occupied, and the 1-based line where the frontmatter
@@ -150,29 +133,6 @@ func ParseFrontmatterYAML(raw []byte) map[string]any {
 		return nil
 	}
 	return parsed
-}
-
-// stripFrontmatter returns content with any leading `---`-fenced YAML block
-// removed (the closing fence's trailing newline is consumed). If there's no
-// frontmatter, the original content is returned.
-func stripFrontmatter(content []byte) []byte {
-	if !bytes.HasPrefix(content, []byte("---\n")) && !bytes.HasPrefix(content, []byte("---\r\n")) {
-		return content
-	}
-	rest := content[4:]
-	if bytes.HasPrefix(content, []byte("---\r\n")) {
-		rest = content[5:]
-	}
-	end := bytes.Index(rest, []byte("\n---"))
-	if end < 0 {
-		return content
-	}
-	after := rest[end+len("\n---"):]
-	// Skip the rest of the closing fence line.
-	if i := bytes.IndexByte(after, '\n'); i >= 0 {
-		return after[i+1:]
-	}
-	return nil
 }
 
 func validate(name string, val any, spec config.FieldSpec) string {
