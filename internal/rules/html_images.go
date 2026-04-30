@@ -26,6 +26,7 @@ func (imageSrcs) Check(f *HTMLFile, ctx *HTMLContext) []Diagnostic {
 		if !ok {
 			continue
 		}
+		ctx.MarkLinked(resolved)
 		if !ctx.Pages[resolved] {
 			diags = append(diags, Diagnostic{
 				Path:    f.Path,

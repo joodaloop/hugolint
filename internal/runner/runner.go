@@ -85,11 +85,11 @@ func Markdown(cfg *config.Config) (int, error) {
 }
 
 func Build(root string) (int, error) {
-	files, pages, pageIDs, err := loadHTML(root)
+	files, allFiles, pages, pageIDs, err := loadHTML(root)
 	if err != nil {
 		return 0, err
 	}
-	ctx := &rules.HTMLContext{Root: root, Pages: pages, PageIDs: pageIDs}
+	ctx := &rules.HTMLContext{Root: root, Pages: pages, PageIDs: pageIDs, LinkedPages: map[string]bool{}}
 
 	rs := rules.HTML()
 	diags := runFiles(files, func(f *rules.HTMLFile) []rules.Diagnostic {
@@ -99,6 +99,11 @@ func Build(root string) (int, error) {
 		}
 		return out
 	})
+
+	if err := rules.ScanCSSLinks(allFiles, ctx); err != nil {
+		return 0, err
+	}
+	diags = append(diags, rules.ReportOrphans(allFiles, ctx)...)
 
 	tidyDiags, err := tidyDiagnostics(root)
 	if err != nil {
@@ -110,10 +115,11 @@ func Build(root string) (int, error) {
 	return len(diags), nil
 }
 
-func loadHTML(root string) ([]*rules.HTMLFile, map[string]bool, map[string]map[string]int, error) {
+func loadHTML(root string) ([]*rules.HTMLFile, []rules.BuiltFile, map[string]bool, map[string]map[string]int, error) {
 	pages := make(map[string]bool)
 	pageIDs := make(map[string]map[string]int)
 	var files []*rules.HTMLFile
+	var allFiles []rules.BuiltFile
 
 	err := filepath.WalkDir(root, func(p string, d fs.DirEntry, err error) error {
 		if err != nil {
@@ -136,6 +142,8 @@ func loadHTML(root string) ([]*rules.HTMLFile, map[string]bool, map[string]map[s
 			pages[strings.TrimSuffix(withSlash, "/")] = true
 			alts = []string{withSlash, strings.TrimSuffix(withSlash, "/")}
 		}
+
+		allFiles = append(allFiles, rules.BuiltFile{Path: p, URLPath: urlPathFor(root, p)})
 
 		if !strings.HasSuffix(p, ".html") {
 			return nil
@@ -160,7 +168,7 @@ func loadHTML(root string) ([]*rules.HTMLFile, map[string]bool, map[string]map[s
 		}
 		return nil
 	})
-	return files, pages, pageIDs, err
+	return files, allFiles, pages, pageIDs, err
 }
 
 func parseHTML(content []byte) (links, images []string, assets []rules.Asset, ids map[string]int, text string) {

@@ -2,6 +2,7 @@ package rules
 
 import (
 	"bytes"
+	"sync"
 
 	"github.com/joodaloop/hugolint/internal/config"
 	"github.com/yuin/goldmark/ast"
@@ -86,6 +87,18 @@ type HTMLContext struct {
 	Root    string
 	Pages   map[string]bool
 	PageIDs map[string]map[string]int
+
+	linkMu      sync.Mutex
+	LinkedPages map[string]bool
+}
+
+func (c *HTMLContext) MarkLinked(target string) {
+	c.linkMu.Lock()
+	defer c.linkMu.Unlock()
+	if c.LinkedPages == nil {
+		c.LinkedPages = map[string]bool{}
+	}
+	c.LinkedPages[target] = true
 }
 
 type MarkdownContext struct {

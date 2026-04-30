@@ -25,6 +25,9 @@ func (relativeLinks) Check(f *HTMLFile, ctx *HTMLContext) []Diagnostic {
 		if !ok {
 			continue
 		}
+		if resolved != f.URLPath {
+			ctx.MarkLinked(resolved)
+		}
 		if !ctx.Pages[resolved] {
 			diags = append(diags, Diagnostic{
 				Path:    f.Path,

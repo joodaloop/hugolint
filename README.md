@@ -58,7 +58,7 @@ index_pages:
 ### Frontmatter lint for anything that doesn't match the declared schema *in any way*
 
 ### Build lints (`hugolint build`)
-- [ ] Checks site build for orphan files (not linked to from anywhere)
+- [x] Checks site build for orphan files (not linked to from anywhere)
 - [ ] Check for presense of essential meta tags
 - [ ] Check that all internal links point to an existing file (`<a>` href, `<img>` src, `<link>`, `<script src>`, `<video>/<audio>` etc.)
 - [ ] Run an HTML tidy/validator pass to catch escaping errors and malformed markup
@@ -95,10 +95,10 @@ index_pages:
   - [x] Catch non-URL-safe characters inside URL
   - [ ] Don't allow https://mydomain.com
   - [ ] Discourage protocol-relative link
+  - [ ] Discourage spacing [ text ] in URL text
   - [ ] Invisible characters
-  - [ ] Dicourage spacing [ text ] and punctuation [documentation.](https://example.com) in URL text 
-  - [ ] Too long link text
-  - [ ] Too long code formatting
+  - [ ] Discourage and punctuation [documentation.](https://example.com) in URL text 
+  - [ ] Too long link text, code formatting, bold, italic, etc.
 
 ### Post-AST checks
 - [ ] Broken Markdown
