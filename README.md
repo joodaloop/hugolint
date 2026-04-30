@@ -59,7 +59,7 @@ index_pages:
 
 ### Build lints (`hugolint build`)
 - [x] Checks site build for orphan files (not linked to from anywhere)
-- [ ] Check for presense of essential meta tags
+- [x] Check for presense of essential meta tags
 - [x] Check that all internal links point to an existing file (`<a>` href, `<img>` src, `<link>`, `<script src>`, `<video>/<audio>` etc.)
 - [ ] Run an HTML tidy/validator pass to catch escaping errors and malformed markup
 - [ ] Detect custom shortcode-like fragments
@@ -77,6 +77,17 @@ index_pages:
     - `<q>`
     - `</q>`
     - `</q<`
+•	Structure: Checks for a valid DOCTYPE, unclosed tags, and correct tag pairing.
+•	Attributes: Ensures attributes are in lowercase, values are quoted (single or double), and there are no duplicate attributes on a single tag.
+•	ID/Class: Validates that IDs are unique across the page and warns against using "ad" keywords in IDs/classes (which can be blocked by ad-blockers).
+•	Essential Tags: Checks for the presence of the <title> tag and the lang attribute on the <html> tag.
+•	Media: Ensures <img> tags have alt attributes and that src attributes are not empty.
+•	Best Practices: Disallows obsolete HTML tags (like <font> or <center>) and warns against inline styles or scripts.
+•	Auto-Correction: Automatically fixes mixed-up tags (e.g., <b><i>text</b></i> becomes <b><i>text</i></b>) and adds missing end tags.
+•	Encoding: Converts characters into correct HTML entities and ensures consistent line endings.
+•	Accessibility (Basic): Flags missing alt text and summary attributes for tables.
+•	Proprietary Tags: Detects and reports non-standard or proprietary browser extensions.
+•	Cleaning: Removes "junk" code often left behind by Word or other visual editors.
 
 ### Raw body checks
 - [ ] Discourage Setext headings
@@ -87,18 +98,18 @@ index_pages:
 ### With-markdown AST 
 - [x] Warn on H1s (they should be in title: )
 - [x] Warn on any heading more than 4
+- [ ] Invisible characters
+- [ ] Too long link text, code formatting, bold, italic, etc.
 - [x] URLs
   - [x] Catch mailto: addresses that aren’t valid email syntax
   - [x] Don't allow http:// 
   - [x] Empty URLs or empty URL text/alt
   - [x] Don't allow relative links
   - [x] Catch non-URL-safe characters inside URL
-  - [ ] Don't allow https://mydomain.com
-  - [ ] Discourage protocol-relative link
-  - [ ] Discourage spacing [ text ] in URL text
-  - [ ] Invisible characters
-  - [ ] Discourage and punctuation [documentation.](https://example.com) in URL text 
-  - [ ] Too long link text, code formatting, bold, italic, etc.
+  - [x] Discourage protocol-relative link
+  - [x] Discourage spacing [ text ] in URL text
+  - [x] Discourage and punctuation [documentation.](https://example.com) in URL text 
+
 
 ### Post-AST checks
 - [ ] Broken Markdown

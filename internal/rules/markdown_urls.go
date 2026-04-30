@@ -101,7 +101,8 @@ func (markdownURLs) Check(f *MarkdownFile, ctx *MarkdownContext) []Diagnostic {
 					Message: fmt.Sprintf("empty %s URL", kind),
 				})
 			}
-			if strings.TrimSpace(nodeText(n, f.Body)) == "" {
+			text := nodeText(n, f.Body)
+			if strings.TrimSpace(text) == "" {
 				rule, msg := "empty-link-text", "empty link text"
 				if kind == "image" {
 					rule, msg = "empty-image-alt", "empty image alt"
@@ -109,6 +110,22 @@ func (markdownURLs) Check(f *MarkdownFile, ctx *MarkdownContext) []Diagnostic {
 				diags = append(diags, Diagnostic{
 					Path: f.Path, Line: line, Rule: rule, Message: msg,
 				})
+			}
+			if kind == "link" {
+				if strings.TrimSpace(text) != text {
+					diags = append(diags, Diagnostic{
+						Path: f.Path, Line: line, Rule: "spaces-around-link",
+						Message: "link text contains extra spaces",
+					})
+				}
+				if text != "" {
+					if last := text[len(text)-1]; strings.ContainsRune(".,;:!?'\"()", rune(last)) {
+						diags = append(diags, Diagnostic{
+							Path: f.Path, Line: line, Rule: "link-punctuation",
+							Message: fmt.Sprintf("link includes trailing %q", string(last)),
+						})
+					}
+				}
 			}
 		}
 
@@ -132,6 +149,13 @@ func validateLinkURL(path string, line int, raw string, siteHosts map[string]boo
 			}}
 		}
 		return nil
+	}
+	// Protocol-relative links are discouraged.
+	if strings.HasPrefix(raw, "//") {
+		return []Diagnostic{{
+			Path: path, Line: line, Rule: "protocol-relative-url",
+			Message: "specify a URL protocol",
+		}}
 	}
 	// Root-relative and fragment links are fine.
 	if raw[0] == '/' || raw[0] == '#' {

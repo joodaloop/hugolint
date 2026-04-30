@@ -372,3 +372,64 @@ func TestURLs_ID(t *testing.T) {
 		t.Fatal("wrong ID")
 	}
 }
+
+// --- protocol-relative ------------------------------------------------------
+
+func TestURLs_ProtocolRelativeFlagged(t *testing.T) {
+	diags := markdownURLs{}.Check(mdFile("[text](//example.com/foo)\n"), nil)
+	if !containsMsg(diags, "specify a URL protocol") {
+		t.Fatalf("want protocol-relative-url diag, got %v", messages(diags))
+	}
+}
+
+func TestURLs_ProtocolRelativeImageFlagged(t *testing.T) {
+	diags := markdownURLs{}.Check(mdFile("![alt](//example.com/img.png)\n"), nil)
+	if !containsMsg(diags, "specify a URL protocol") {
+		t.Fatalf("want protocol-relative-url diag for image, got %v", messages(diags))
+	}
+}
+
+// --- spaces-around-link -----------------------------------------------------
+
+func TestURLs_SpacesAroundLinkFlagged(t *testing.T) {
+	cases := []string{
+		"[ text ](https://example.com)\n",
+		"[text ](https://example.com)\n",
+		"[ text](https://example.com)\n",
+	}
+	for _, in := range cases {
+		diags := markdownURLs{}.Check(mdFile(in), nil)
+		if !containsMsg(diags, "link text contains extra spaces") {
+			t.Errorf("input %q: want spaces-around-link diag, got %v", in, messages(diags))
+		}
+	}
+}
+
+func TestURLs_NoSpacesAroundLinkOK(t *testing.T) {
+	assertNoDiags(t, markdownURLs{}.Check(mdFile("[text](https://example.com)\n"), nil))
+}
+
+// --- link-punctuation -------------------------------------------------------
+
+func TestURLs_LinkTrailingPunctuationFlagged(t *testing.T) {
+	cases := []struct {
+		in, want string
+	}{
+		{"[documentation.](https://example.com)\n", `link includes trailing "."`},
+		{"[docs,](https://example.com)\n", `link includes trailing ","`},
+		{"[docs;](https://example.com)\n", `link includes trailing ";"`},
+		{"[docs:](https://example.com)\n", `link includes trailing ":"`},
+		{"[docs!](https://example.com)\n", `link includes trailing "!"`},
+		{"[docs?](https://example.com)\n", `link includes trailing "?"`},
+	}
+	for _, tc := range cases {
+		diags := markdownURLs{}.Check(mdFile(tc.in), nil)
+		if !containsMsg(diags, tc.want) {
+			t.Errorf("input %q: want %q, got %v", tc.in, tc.want, messages(diags))
+		}
+	}
+}
+
+func TestURLs_LinkNoTrailingPunctuationOK(t *testing.T) {
+	assertNoDiags(t, markdownURLs{}.Check(mdFile("[documentation](https://example.com)\n"), nil))
+}
