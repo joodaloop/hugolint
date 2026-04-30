@@ -1,22 +1,19 @@
 package rules
 
 import (
-	"bufio"
-	"bytes"
 	"fmt"
-	"regexp"
 	"strings"
+
+	"github.com/yuin/goldmark/ast"
 )
 
 func init() {
-	RegisterMarkdown(&markdownImageAlt{})
+	RegisterMarkdownAST(&markdownImageAlt{})
 }
 
 type markdownImageAlt struct{}
 
 func (markdownImageAlt) ID() string { return "image-alt" }
-
-var mdImage = regexp.MustCompile(`!\[([^\]]*)\]\(([^)]+)\)`)
 
 var genericAlts = map[string]bool{
 	"":           true,
@@ -33,20 +30,49 @@ var genericAlts = map[string]bool{
 
 func (markdownImageAlt) Check(f *MarkdownFile, _ *MarkdownContext) []Diagnostic {
 	var diags []Diagnostic
-	scanner := bufio.NewScanner(bytes.NewReader(f.Content))
-	scanner.Buffer(make([]byte, 64*1024), 1024*1024)
-	line := 0
-	for scanner.Scan() {
-		line++
-		for _, m := range mdImage.FindAllStringSubmatch(scanner.Text(), -1) {
-			alt := strings.ToLower(strings.TrimSpace(m[1]))
-			if genericAlts[alt] {
-				diags = append(diags, Diagnostic{
-					Path: f.Path, Line: line, Rule: "image-alt",
-					Message: fmt.Sprintf("useless image alt text: %q", m[1]),
-				})
-			}
+	ast.Walk(f.AST, func(n ast.Node, entering bool) (ast.WalkStatus, error) {
+		if !entering {
+			return ast.WalkContinue, nil
+		}
+		img, ok := n.(*ast.Image)
+		if !ok {
+			return ast.WalkContinue, nil
+		}
+		raw := imageAltText(img, f.Body)
+		alt := strings.ToLower(strings.TrimSpace(raw))
+		if genericAlts[alt] {
+			diags = append(diags, Diagnostic{
+				Path: f.Path, Line: imageLine(img, f), Rule: "image-alt",
+				Message: fmt.Sprintf("useless image alt text: %q", raw),
+			})
+		}
+		return ast.WalkSkipChildren, nil
+	})
+	return diags
+}
+
+func imageAltText(img *ast.Image, body []byte) string {
+	var b strings.Builder
+	ast.Walk(img, func(n ast.Node, entering bool) (ast.WalkStatus, error) {
+		if !entering {
+			return ast.WalkContinue, nil
+		}
+		if t, ok := n.(*ast.Text); ok {
+			b.Write(t.Segment.Value(body))
+		}
+		return ast.WalkContinue, nil
+	})
+	return b.String()
+}
+
+func imageLine(img *ast.Image, f *MarkdownFile) int {
+	if t, ok := img.FirstChild().(*ast.Text); ok {
+		return f.LineAt(t.Segment.Start)
+	}
+	for p := img.Parent(); p != nil; p = p.Parent() {
+		if lines := p.Lines(); lines != nil && lines.Len() > 0 {
+			return f.LineAt(lines.At(0).Start)
 		}
 	}
-	return diags
+	return f.BodyStartLine
 }

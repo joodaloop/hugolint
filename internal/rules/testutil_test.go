@@ -4,11 +4,25 @@ import (
 	"sort"
 	"strings"
 	"testing"
+
+	"github.com/yuin/goldmark"
+	"github.com/yuin/goldmark/text"
 )
 
-// mdFile builds a MarkdownFile with the given content for testing.
+var testParser = goldmark.New().Parser()
+
+// mdFile builds a MarkdownFile with the given content for testing,
+// populated the same way the runner populates real files.
 func mdFile(content string) *MarkdownFile {
-	return &MarkdownFile{Path: "test.md", Content: []byte(content)}
+	b := []byte(content)
+	_, body, fmLines, _ := SplitFrontmatter(b)
+	return &MarkdownFile{
+		Path:          "test.md",
+		Content:       b,
+		Body:          body,
+		AST:           testParser.Parse(text.NewReader(body)),
+		BodyStartLine: fmLines + 1,
+	}
 }
 
 // htmlFile builds an HTMLFile with text content for testing.

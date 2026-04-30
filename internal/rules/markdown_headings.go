@@ -10,6 +10,13 @@ func init() {
 	RegisterMarkdown(&markdownHeadings{})
 }
 
+// markdownHeadings catches text-level ATX heading mistakes that the AST has
+// already silently fixed up: a heading that's indented (still parses as a
+// heading per CommonMark, but is almost always unintentional) and `#Word`
+// with no trailing space (CommonMark refuses to call this a heading at all,
+// so the AST won't see it).
+//
+// H1 detection lives in markdownHeadingsAST.
 type markdownHeadings struct{}
 
 func (markdownHeadings) ID() string { return "headings" }
@@ -23,8 +30,6 @@ func (markdownHeadings) Check(f *MarkdownFile, _ *MarkdownContext) []Diagnostic 
 	fenceChar := byte(0)
 	fenceLen := 0
 	inFrontmatter := false
-	prevText := ""
-	prevTextLine := 0
 	line := 0
 
 	for scanner.Scan() {
@@ -34,8 +39,6 @@ func (markdownHeadings) Check(f *MarkdownFile, _ *MarkdownContext) []Diagnostic 
 
 		if line == 1 && trimmed == "---" {
 			inFrontmatter = true
-			prevText = ""
-			prevTextLine = 0
 			continue
 		}
 		if inFrontmatter {
@@ -58,8 +61,6 @@ func (markdownHeadings) Check(f *MarkdownFile, _ *MarkdownContext) []Diagnostic 
 					fenceChar = c
 					fenceLen = n
 				}
-				prevText = ""
-				prevTextLine = 0
 				continue
 			}
 		}
@@ -80,32 +81,6 @@ func (markdownHeadings) Check(f *MarkdownFile, _ *MarkdownContext) []Diagnostic 
 				Message: "no space after # in heading",
 			})
 		}
-
-		if isATXH1(leftTrimmed, indent) {
-			diags = append(diags, Diagnostic{
-				Path: f.Path, Line: line, Rule: "headings",
-				Message: "h1 headings are not allowed",
-			})
-		}
-
-		if trimmed == "" {
-			prevText = ""
-			prevTextLine = 0
-			continue
-		}
-
-		if isSetextH1Underline(leftTrimmed, indent) && prevText != "" {
-			diags = append(diags, Diagnostic{
-				Path: f.Path, Line: prevTextLine, Rule: "headings",
-				Message: "h1 headings are not allowed",
-			})
-			prevText = ""
-			prevTextLine = 0
-			continue
-		}
-
-		prevText = text
-		prevTextLine = line
 	}
 
 	return diags
@@ -146,13 +121,6 @@ func isATXHeading(trim string) bool {
 	return trim[i] == ' ' || trim[i] == '\t'
 }
 
-func isATXH1(trim string, indent int) bool {
-	if indent > 3 || len(trim) < 2 || trim[0] != '#' || trim[1] == '#' {
-		return false
-	}
-	return trim[1] == ' ' || trim[1] == '\t'
-}
-
 func isATXHeadingMissingSpace(trim string, indent int) bool {
 	if indent > 3 || len(trim) < 2 || trim[0] != '#' {
 		return false
@@ -165,16 +133,4 @@ func isATXHeadingMissingSpace(trim string, indent int) bool {
 		return false
 	}
 	return trim[i] != ' ' && trim[i] != '\t'
-}
-
-func isSetextH1Underline(trim string, indent int) bool {
-	if indent > 3 || trim == "" {
-		return false
-	}
-	for i := 0; i < len(trim); i++ {
-		if trim[i] != '=' {
-			return false
-		}
-	}
-	return true
 }
