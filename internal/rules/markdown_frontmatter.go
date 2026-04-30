@@ -12,25 +12,26 @@ import (
 )
 
 func init() {
-	RegisterMarkdown(&markdownFrontmatter{})
+	RegisterFrontmatter(&markdownFrontmatter{})
 }
 
 type markdownFrontmatter struct{}
 
 func (markdownFrontmatter) ID() string { return "frontmatter" }
 
-func (markdownFrontmatter) Check(f *MarkdownFile, ctx *MarkdownContext) []Diagnostic {
+func (markdownFrontmatter) Check(f *FrontmatterFile, ctx *FrontmatterContext) []Diagnostic {
 	if ctx == nil || ctx.Config == nil {
 		return nil
 	}
 	_, schema := ctx.Config.SchemaFor(f.Path)
-	fmBody, fmLine, ok := extractFrontmatter(f.Content)
+	hasFrontmatter := f.Line0 > 0
+	fmLine := f.Line0
 	if schema == nil {
-		if !ok {
+		if !hasFrontmatter {
 			return nil
 		}
 		var parsed map[string]any
-		if err := yaml.Unmarshal(fmBody, &parsed); err != nil {
+		if err := yaml.Unmarshal(f.Raw, &parsed); err != nil {
 			return []Diagnostic{{
 				Path: f.Path, Line: fmLine, Rule: "frontmatter",
 				Message: fmt.Sprintf("invalid YAML: %v", err),
@@ -38,7 +39,7 @@ func (markdownFrontmatter) Check(f *MarkdownFile, ctx *MarkdownContext) []Diagno
 		}
 		return unknownFieldDiagnostics(f.Path, fmLine, parsed, nil)
 	}
-	if !ok {
+	if !hasFrontmatter {
 		return []Diagnostic{{
 			Path: f.Path, Line: 1, Rule: "frontmatter",
 			Message: "missing YAML frontmatter",
@@ -46,7 +47,7 @@ func (markdownFrontmatter) Check(f *MarkdownFile, ctx *MarkdownContext) []Diagno
 	}
 
 	var parsed map[string]any
-	if err := yaml.Unmarshal(fmBody, &parsed); err != nil {
+	if err := yaml.Unmarshal(f.Raw, &parsed); err != nil {
 		return []Diagnostic{{
 			Path: f.Path, Line: fmLine, Rule: "frontmatter",
 			Message: fmt.Sprintf("invalid YAML: %v", err),

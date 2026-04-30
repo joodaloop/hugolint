@@ -42,7 +42,7 @@ func (markdownImageAlt) Check(f *MarkdownFile, _ *MarkdownContext) []Diagnostic 
 		alt := strings.ToLower(strings.TrimSpace(raw))
 		if genericAlts[alt] {
 			diags = append(diags, Diagnostic{
-				Path: f.Path, Line: imageLine(img, f), Rule: "image-alt",
+				Path: f.Path, Line: f.NodeLine(img), Rule: "image-alt",
 				Message: fmt.Sprintf("useless image alt text: %q", raw),
 			})
 		}
@@ -63,16 +63,4 @@ func imageAltText(img *ast.Image, body []byte) string {
 		return ast.WalkContinue, nil
 	})
 	return b.String()
-}
-
-func imageLine(img *ast.Image, f *MarkdownFile) int {
-	if t, ok := img.FirstChild().(*ast.Text); ok {
-		return f.LineAt(t.Segment.Start)
-	}
-	for p := img.Parent(); p != nil; p = p.Parent() {
-		if lines := p.Lines(); lines != nil && lines.Len() > 0 {
-			return f.LineAt(lines.At(0).Start)
-		}
-	}
-	return f.BodyStartLine
 }

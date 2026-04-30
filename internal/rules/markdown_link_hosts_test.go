@@ -83,19 +83,6 @@ func TestLinkHosts_RootAndFragmentSkipped(t *testing.T) {
 	}
 }
 
-func TestStripTitle(t *testing.T) {
-	cases := []struct{ in, want string }{
-		{`https://x.com`, `https://x.com`},
-		{`https://x.com "Title"`, `https://x.com`},
-		{`  https://x.com  `, `https://x.com`},
-	}
-	for _, tc := range cases {
-		if got := stripTitle(tc.in); got != tc.want {
-			t.Errorf("stripTitle(%q) = %q, want %q", tc.in, got, tc.want)
-		}
-	}
-}
-
 func TestLinkHosts_ID(t *testing.T) {
 	if (markdownLinkHosts{}).ID() != "link-host" {
 		t.Fatal("wrong ID")

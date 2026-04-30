@@ -33,13 +33,34 @@ func (f *MarkdownFile) LineAt(offset int) int {
 }
 
 func (f *MarkdownFile) NodeLine(n ast.Node) int {
-	if t, ok := n.(*ast.Text); ok {
-		return f.LineAt(t.Segment.Start)
+	if start, ok := earliestTextStart(n); ok {
+		return f.LineAt(start)
 	}
-	if lines := n.Lines(); lines != nil && lines.Len() > 0 {
-		return f.LineAt(lines.At(0).Start)
+	for p := n; p != nil; p = p.Parent() {
+		if p.Type() == ast.TypeBlock {
+			if lines := p.Lines(); lines != nil && lines.Len() > 0 {
+				return f.LineAt(lines.At(0).Start)
+			}
+		}
 	}
 	return f.BodyStartLine
+}
+
+func earliestTextStart(n ast.Node) (int, bool) {
+	start, found := 0, false
+	ast.Walk(n, func(c ast.Node, entering bool) (ast.WalkStatus, error) {
+		if !entering {
+			return ast.WalkContinue, nil
+		}
+		if t, ok := c.(*ast.Text); ok {
+			if !found || t.Segment.Start < start {
+				start = t.Segment.Start
+				found = true
+			}
+		}
+		return ast.WalkContinue, nil
+	})
+	return start, found
 }
 
 type Asset struct {

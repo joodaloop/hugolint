@@ -1,50 +1,53 @@
 package rules
 
 import (
-	"bufio"
-	"bytes"
 	"fmt"
 	"net/url"
-	"regexp"
+
+	"github.com/yuin/goldmark/ast"
 )
 
 func init() {
-	RegisterMarkdown(&markdownRelativeLinks{})
+	RegisterMarkdownAST(&markdownRelativeLinks{})
 }
 
 type markdownRelativeLinks struct{}
 
 func (markdownRelativeLinks) ID() string { return "relative-link" }
 
-var mdLinkOrImage = regexp.MustCompile(`!?\]\(([^)]+)\)`)
-
 func (markdownRelativeLinks) Check(f *MarkdownFile, _ *MarkdownContext) []Diagnostic {
 	var diags []Diagnostic
-	scanner := bufio.NewScanner(bytes.NewReader(f.Content))
-	scanner.Buffer(make([]byte, 64*1024), 1024*1024)
-	line := 0
-	for scanner.Scan() {
-		line++
-		for _, m := range mdLinkOrImage.FindAllStringSubmatch(scanner.Text(), -1) {
-			raw := stripTitle(m[1])
-			if raw == "" {
-				continue
-			}
-			if raw[0] == '/' || raw[0] == '#' {
-				continue
-			}
-			u, err := url.Parse(raw)
-			if err != nil {
-				continue
-			}
-			if u.Scheme != "" {
-				continue
-			}
-			diags = append(diags, Diagnostic{
-				Path: f.Path, Line: line, Rule: "relative-link",
-				Message: fmt.Sprintf("relative link: %s (use root-relative path starting with /)", raw),
-			})
+	ast.Walk(f.AST, func(n ast.Node, entering bool) (ast.WalkStatus, error) {
+		if !entering {
+			return ast.WalkContinue, nil
 		}
-	}
+		raw, ok := linkDestination(n)
+		if !ok || raw == "" {
+			return ast.WalkContinue, nil
+		}
+		if raw[0] == '/' || raw[0] == '#' {
+			return ast.WalkContinue, nil
+		}
+		u, err := url.Parse(raw)
+		if err != nil || u.Scheme != "" {
+			return ast.WalkContinue, nil
+		}
+		diags = append(diags, Diagnostic{
+			Path: f.Path, Line: f.NodeLine(n), Rule: "relative-link",
+			Message: fmt.Sprintf("relative link: %s (use root-relative path starting with /)", raw),
+		})
+		return ast.WalkContinue, nil
+	})
 	return diags
+}
+
+// linkDestination returns the destination URL for a Link or Image node.
+func linkDestination(n ast.Node) (string, bool) {
+	switch v := n.(type) {
+	case *ast.Link:
+		return string(v.Destination), true
+	case *ast.Image:
+		return string(v.Destination), true
+	}
+	return "", false
 }
