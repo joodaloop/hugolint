@@ -70,13 +70,31 @@ type Asset struct {
 	URL  string
 }
 
+type MetaTag struct {
+	Name     string // value of name=""
+	Property string // value of property=""
+	HTTPEquiv string // value of http-equiv=""
+	Charset  string // value of charset=""
+	Content  string // value of content=""
+}
+
+type HeadLink struct {
+	Rel   string
+	Type  string
+	Href  string
+	Title string
+}
+
 type HTMLFile struct {
-	Path    string
-	URLPath string
-	Links   []string
-	Images  []string
-	Assets  []Asset
-	IDs     map[string]int
+	Path      string
+	URLPath   string
+	Links     []string
+	Images    []string
+	Assets    []Asset
+	IDs       map[string]int
+	Title     string
+	Metas     []MetaTag
+	HeadLinks []HeadLink
 	// Text is the concatenated text content of the document, excluding
 	// content inside <script>, <style>, <pre>, and <code>. Comments are
 	// also excluded (the tokenizer strips them).
@@ -87,6 +105,7 @@ type HTMLContext struct {
 	Root    string
 	Pages   map[string]bool
 	PageIDs map[string]map[string]int
+	Config  *config.Config
 
 	linkMu      sync.Mutex
 	LinkedPages map[string]bool

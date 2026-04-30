@@ -84,12 +84,12 @@ func Markdown(cfg *config.Config) (int, error) {
 	return len(diags), nil
 }
 
-func Build(root string) (int, error) {
+func Build(cfg *config.Config, root string) (int, error) {
 	files, allFiles, pages, pageIDs, err := loadHTML(root)
 	if err != nil {
 		return 0, err
 	}
-	ctx := &rules.HTMLContext{Root: root, Pages: pages, PageIDs: pageIDs, LinkedPages: map[string]bool{}}
+	ctx := &rules.HTMLContext{Root: root, Pages: pages, PageIDs: pageIDs, Config: cfg, LinkedPages: map[string]bool{}}
 
 	rs := rules.HTML()
 	diags := runFiles(files, func(f *rules.HTMLFile) []rules.Diagnostic {
@@ -152,15 +152,18 @@ func loadHTML(root string) ([]*rules.HTMLFile, []rules.BuiltFile, map[string]boo
 		if err != nil {
 			return err
 		}
-		links, images, assets, ids, text := parseHTML(b)
+		links, images, assets, ids, text, title, metas, headLinks := parseHTML(b)
 		files = append(files, &rules.HTMLFile{
-			Path:    p,
-			URLPath: urlPathFor(root, p),
-			Links:   links,
-			Images:  images,
-			Assets:  assets,
-			IDs:     ids,
-			Text:    text,
+			Path:      p,
+			URLPath:   urlPathFor(root, p),
+			Links:     links,
+			Images:    images,
+			Assets:    assets,
+			IDs:       ids,
+			Text:      text,
+			Title:     title,
+			Metas:     metas,
+			HeadLinks: headLinks,
 		})
 		pageIDs[u] = ids
 		for _, alt := range alts {
@@ -171,10 +174,12 @@ func loadHTML(root string) ([]*rules.HTMLFile, []rules.BuiltFile, map[string]boo
 	return files, allFiles, pages, pageIDs, err
 }
 
-func parseHTML(content []byte) (links, images []string, assets []rules.Asset, ids map[string]int, text string) {
+func parseHTML(content []byte) (links, images []string, assets []rules.Asset, ids map[string]int, text, title string, metas []rules.MetaTag, headLinks []rules.HeadLink) {
 	ids = map[string]int{}
-	var textBuf bytes.Buffer
+	var textBuf, titleBuf bytes.Buffer
 	skipDepth := 0 // depth inside <script>/<style>/<pre>/<code>
+	headDepth := 0
+	titleDepth := 0
 
 	isSkipTag := func(tag string) bool {
 		switch tag {
@@ -193,6 +198,9 @@ func parseHTML(content []byte) (links, images []string, assets []rules.Asset, id
 
 		switch tt {
 		case html.TextToken:
+			if titleDepth > 0 {
+				titleBuf.Write(z.Text())
+			}
 			if skipDepth == 0 {
 				textBuf.Write(z.Text())
 				// Separator between text nodes so pattern scans can't
@@ -203,8 +211,15 @@ func parseHTML(content []byte) (links, images []string, assets []rules.Asset, id
 			continue
 		case html.EndTagToken:
 			name, _ := z.TagName()
-			if isSkipTag(string(name)) && skipDepth > 0 {
+			tagStr := string(name)
+			if isSkipTag(tagStr) && skipDepth > 0 {
 				skipDepth--
+			}
+			if tagStr == "head" && headDepth > 0 {
+				headDepth--
+			}
+			if tagStr == "title" && titleDepth > 0 {
+				titleDepth--
 			}
 			continue
 		case html.StartTagToken, html.SelfClosingTagToken:
@@ -218,23 +233,61 @@ func parseHTML(content []byte) (links, images []string, assets []rules.Asset, id
 		if tt == html.StartTagToken && isSkipTag(tag) {
 			skipDepth++
 		}
-		if !hasAttr {
-			continue
+		if tt == html.StartTagToken && tag == "head" {
+			headDepth++
 		}
-		var href, src, id string
-		for {
-			k, v, more := z.TagAttr()
-			switch string(k) {
-			case "href":
-				href = string(v)
-			case "src":
-				src = string(v)
-			case "id":
-				id = string(v)
+		if tt == html.StartTagToken && tag == "title" {
+			titleDepth++
+		}
+		var href, src, id, metaName, metaProp, metaEquiv, metaCharset, metaContent, linkRel, linkType, linkTitle string
+		if hasAttr {
+			for {
+				k, v, more := z.TagAttr()
+				switch string(k) {
+				case "href":
+					href = string(v)
+				case "src":
+					src = string(v)
+				case "id":
+					id = string(v)
+				case "name":
+					metaName = string(v)
+				case "property":
+					metaProp = string(v)
+				case "http-equiv":
+					metaEquiv = string(v)
+				case "charset":
+					metaCharset = string(v)
+				case "content":
+					metaContent = string(v)
+				case "rel":
+					linkRel = string(v)
+				case "type":
+					linkType = string(v)
+				case "title":
+					linkTitle = string(v)
+				}
+				if !more {
+					break
+				}
 			}
-			if !more {
-				break
-			}
+		}
+		if tag == "meta" {
+			metas = append(metas, rules.MetaTag{
+				Name:      metaName,
+				Property:  metaProp,
+				HTTPEquiv: metaEquiv,
+				Charset:   metaCharset,
+				Content:   metaContent,
+			})
+		}
+		if tag == "link" && headDepth > 0 {
+			headLinks = append(headLinks, rules.HeadLink{
+				Rel:   linkRel,
+				Type:  linkType,
+				Href:  href,
+				Title: linkTitle,
+			})
 		}
 		switch tag {
 		case "a":
@@ -259,6 +312,7 @@ func parseHTML(content []byte) (links, images []string, assets []rules.Asset, id
 		}
 	}
 	text = textBuf.String()
+	title = strings.TrimSpace(titleBuf.String())
 	return
 }
 

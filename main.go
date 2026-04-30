@@ -36,7 +36,7 @@ func main() {
 		if len(os.Args) >= 3 {
 			root = os.Args[2]
 		}
-		n, err = runner.Build(root)
+		n, err = runner.Build(cfg, root)
 	default:
 		usage()
 		os.Exit(2)

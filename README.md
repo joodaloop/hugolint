@@ -60,7 +60,7 @@ index_pages:
 ### Build lints (`hugolint build`)
 - [x] Checks site build for orphan files (not linked to from anywhere)
 - [ ] Check for presense of essential meta tags
-- [ ] Check that all internal links point to an existing file (`<a>` href, `<img>` src, `<link>`, `<script src>`, `<video>/<audio>` etc.)
+- [x] Check that all internal links point to an existing file (`<a>` href, `<img>` src, `<link>`, `<script src>`, `<video>/<audio>` etc.)
 - [ ] Run an HTML tidy/validator pass to catch escaping errors and malformed markup
 - [ ] Detect custom shortcode-like fragments
     - {{<
