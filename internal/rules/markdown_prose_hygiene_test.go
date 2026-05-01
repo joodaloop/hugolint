@@ -149,6 +149,9 @@ func TestProseHygiene_Cases(t *testing.T) {
 		{`he said " hello " to me` + "\n", "padded spaces inside quotation marks", true},
 		{`he said "hello" to me` + "\n", "padded spaces inside quotation marks", false},
 		{`<a href="url">x</a>` + "\n", "padded spaces inside quotation marks", false},
+		{`replaced the "GUIDE" type with "ESSAY" instead.` + "\n", "padded spaces inside quotation marks", false},
+		{`Replaced "Colophon" with "Changelog" in the heading` + "\n", "padded spaces inside quotation marks", false},
+		{`format for "Latest Updates") and Workbench` + "\n", "padded spaces inside quotation marks", false},
 
 		// Spaced percent.
 		{"gain 10 % yearly\n", "space before percent", true},
@@ -183,12 +186,17 @@ func TestProseHygiene_Cases(t *testing.T) {
 		{"-10 below zero\n", "hyphen used as minus", true},
 		{"pages 1-10 here\n", "hyphen used as minus", false},
 		{"- list item\n", "hyphen used as minus", false},
+		{"see [foo](https://example.com/path-2024-01-thing) here\n", "hyphen used as minus", false},
+		{"see https://example.com/foo-2024 here\n", "hyphen used as minus", false},
 
 		// Hyphen as numeric-range dash.
 		{"pages 100-200 are blank\n", "hyphen in numeric range", true},
 		{"the 1990-2000 era\n", "hyphen in numeric range", true},
 		{"date 2020-01-01 here\n", "hyphen in numeric range", false},
 		{"version 1.0-rc1 ships\n", "hyphen in numeric range", false},
+		{"see [link](https://example.com/2020-2024/post) here\n", "hyphen in numeric range", false},
+		{"see https://example.com/1990-2000/era here\n", "hyphen in numeric range", false},
+		{"in `pages 100-200` code\n", "hyphen in numeric range", false},
 
 		// Hugo shortcode spacing.
 		{"{{<figure src=x>}}\n", "Hugo shortcode", true},

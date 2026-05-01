@@ -3,8 +3,6 @@ package rules
 import (
 	"bufio"
 	"bytes"
-	"crypto/sha256"
-	"encoding/hex"
 	"fmt"
 	"os"
 	"os/exec"
@@ -55,26 +53,27 @@ func (s *speller) init(cfg *config.Config) {
 	sc := bufio.NewScanner(bytes.NewReader(b))
 	for sc.Scan() {
 		w := strings.TrimSpace(sc.Text())
-		if w != "" {
-			words = append(words, w)
+		if w == "" {
+			continue
 		}
+		// aspell rejects personal-dict words that don't start with a letter.
+		r := w[0]
+		if !((r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z')) {
+			continue
+		}
+		words = append(words, w)
 	}
 
 	// Aspell's --personal expects its own format with a header line.
-	// Path is keyed off a hash of the contents so repeated runs reuse the
-	// same file and old hashes age out naturally with $TMPDIR.
 	var buf bytes.Buffer
-	fmt.Fprintf(&buf, "personal_ws-1.1 en %d\n", len(words))
+	fmt.Fprintf(&buf, "personal_ws-1.1 en %d utf-8\n", len(words))
 	for _, w := range words {
 		fmt.Fprintln(&buf, w)
 	}
-	sum := sha256.Sum256(buf.Bytes())
-	s.personalPath = filepath.Join(os.TempDir(), "hugolint-aspell-"+hex.EncodeToString(sum[:8])+".pws")
-	if _, err := os.Stat(s.personalPath); err != nil {
-		if err := os.WriteFile(s.personalPath, buf.Bytes(), 0o644); err != nil {
-			s.initErr = fmt.Errorf("writing personal dict: %v", err)
-			return
-		}
+	s.personalPath = filepath.Join(os.TempDir(), "hugolint-aspell.pws")
+	if err := os.WriteFile(s.personalPath, buf.Bytes(), 0o644); err != nil {
+		s.initErr = fmt.Errorf("writing personal dict: %v", err)
+		return
 	}
 
 	quoted := make([]string, len(spellingSuffixes))
@@ -93,30 +92,25 @@ func (s *speller) init(cfg *config.Config) {
 
 // unknown runs aspell on body and returns the set of unknown words. The
 // caller is responsible for checking enabled / initErr first via ready().
-func (s *speller) unknown(body []byte, mode string) (map[string]bool, error) {
+func (s *speller) unknown(body []byte) (map[string]bool, error) {
 	body = s.hyphenSuffix.ReplaceAll(body, []byte(""))
 	body = s.ordinal.ReplaceAll(body, []byte(""))
 	body = s.unitPrefix.ReplaceAll(body, []byte("$1"))
 
-	args := []string{"--lang=en", "--personal=" + s.personalPath, "list"}
-	if mode != "" {
-		args = append([]string{"--mode=" + mode}, args...)
-	}
-	cmd := exec.Command(s.aspellPath, args...)
+	cmd := exec.Command(s.aspellPath, "--lang=en", "--encoding=utf-8", "--mode=markdown", "--personal="+s.personalPath, "list")
 	cmd.Stdin = bytes.NewReader(body)
 	out, err := cmd.Output()
 	if err != nil {
+		if ee, ok := err.(*exec.ExitError); ok && len(ee.Stderr) > 0 {
+			return nil, fmt.Errorf("aspell failed: %v: %s", err, bytes.TrimSpace(ee.Stderr))
+		}
 		return nil, fmt.Errorf("aspell failed: %v", err)
 	}
 
 	res := map[string]bool{}
 	sc := bufio.NewScanner(bytes.NewReader(out))
 	for sc.Scan() {
-		w := strings.TrimSpace(sc.Text())
-		if w == "" {
-			continue
-		}
-		res[w] = true
+		res[strings.TrimSpace(sc.Text())] = true
 	}
 	return res, nil
 }

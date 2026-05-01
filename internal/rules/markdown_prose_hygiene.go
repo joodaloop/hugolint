@@ -41,7 +41,7 @@ var (
 
 	missingSpacePunct = regexp.MustCompile(`[a-z][.!?;,][A-Z][a-z]`)
 	asymSlash         = regexp.MustCompile(`[A-Za-z]/ [A-Za-z]|[A-Za-z] /[A-Za-z]`)
-	paddedQuote       = regexp.MustCompile(`"[ \t]+[^"\n]*?[ \t]+"`)
+	paddedQuote       = regexp.MustCompile(`(^|\s)"[ \t]+[^"\n]*?[ \t]+"(\s|[.,;:!?)\]]|$)`)
 	spacedPercent     = regexp.MustCompile(`\d %`)
 	spacedCurrency    = regexp.MustCompile(`[$£€¥] \d`)
 	spacedHash        = regexp.MustCompile(`[^#]# \d`)
@@ -75,10 +75,10 @@ var literalPatterns = []literalPattern{
 	{"``", "double backtick"},
 	{"“", "opening smart quote"},
 	{"”", "closing smart quote"},
-	{"‘", "opening curvy apostrophe"},
-	{"’", "closing curvy apostrophe"},
+	// {"‘", "opening curvy apostrophe"},
+	// {"’", "closing curvy apostrophe"},
 	{",,", "double comma"},
-	{".. ", "double period"},
+	// {".. ", "double period"},
 	{" )", "space before closing paren"},
 	{"( ", "space after opening paren"},
 	{" ,", "space before comma"},
@@ -392,13 +392,13 @@ func (markdownProseHygiene) Check(f *MarkdownFile, _ *MarkdownContext) []Diagnos
 				Message: "asymmetrical spacing around hyphen",
 			})
 		}
-		if strings.Contains(text, "-") && hyphenMinus.MatchString(text) {
+		if strings.Contains(prose, "-") && hyphenMinus.MatchString(prose) {
 			diags = append(diags, Diagnostic{
 				Path: f.Path, Line: line, Rule: "prose-hygiene",
 				Message: "hyphen used as minus sign (use −)",
 			})
 		}
-		if strings.Contains(text, "-") && hyphenRange.MatchString(text) {
+		if strings.Contains(prose, "-") && hyphenRange.MatchString(prose) {
 			diags = append(diags, Diagnostic{
 				Path: f.Path, Line: line, Rule: "prose-hygiene",
 				Message: "hyphen in numeric range (use en dash –)",

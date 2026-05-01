@@ -53,7 +53,7 @@ func (r *frontmatterSpelling) Check(f *FrontmatterFile, ctx *FrontmatterContext)
 	var diags []Diagnostic
 	for _, name := range names {
 		val := fields[name]
-		unknown, err := sharedSpeller.unknown([]byte(val), "")
+		unknown, err := sharedSpeller.unknown([]byte(val))
 		if err != nil {
 			diags = append(diags, Diagnostic{Path: f.Path, Line: f.Line0, Rule: "spelling", Message: err.Error()})
 			continue

@@ -35,7 +35,7 @@ func BenchmarkAspellStartup(b *testing.B) {
 	body := []byte("the quick brown fox\n")
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		if _, err := sharedSpeller.unknown(body, ""); err != nil {
+		if _, err := sharedSpeller.unknown(body); err != nil {
 			b.Fatal(err)
 		}
 	}
@@ -54,7 +54,7 @@ func BenchmarkAspellThroughput(b *testing.B) {
 	b.SetBytes(int64(len(body)))
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		if _, err := sharedSpeller.unknown(body, ""); err != nil {
+		if _, err := sharedSpeller.unknown(body); err != nil {
 			b.Fatal(err)
 		}
 	}

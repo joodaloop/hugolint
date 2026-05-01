@@ -33,7 +33,7 @@ func (m *markdownSpelling) Check(f *MarkdownFile, ctx *MarkdownContext) []Diagno
 		return nil
 	}
 
-	unknown, err := sharedSpeller.unknown(f.Body, "markdown")
+	unknown, err := sharedSpeller.unknown(f.Body)
 	if err != nil {
 		return []Diagnostic{{Path: f.Path, Rule: "spelling", Message: err.Error()}}
 	}
