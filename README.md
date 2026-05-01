@@ -98,6 +98,7 @@ index_pages:
 ### AST-prose lints
 - [x] Existence of ** \`~~ ==
 - [x] Spellcheck on prose with aspell with an personal dictionary
+  - [ ] Special case for username checks (@loquitur_ponte)
 - [x] Suffix handling (2nd, 50kg vs 50 kg)
 - [x] Unbalanced parens and quotes
 - [x] Repetitions
