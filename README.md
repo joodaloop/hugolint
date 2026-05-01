@@ -57,7 +57,6 @@ index_pages:
 - [x] Checks site build for orphan files (not linked to from anywhere)
 - [x] Check for presense of essential meta tags
 - [x] Check that all internal links point to an existing file (`<a>` href, `<img>` src, `<link>`, `<script src>`, `<video>/<audio>` etc.)
-- [ ] Run an HTML tidy/validator pass to catch escaping errors and malformed markup
   - [ ]	Check for a valid DOCTYPE, unclosed tags, and correct tag pairing.
   - [ ] Validates that IDs are unique across the page
   - [ ] &amp;, &nbsp;, &#39; (unresolved HTML entities bleeding into plain text)
