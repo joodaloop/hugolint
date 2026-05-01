@@ -41,8 +41,8 @@ func TestProseHygieneAST_Cases(t *testing.T) {
 		{"word. Next\n", "space around period", false},
 		// The '!' check runs at block level (proseBlockChecks) because goldmark
 		// splits text at '!' trigger-char boundaries in its inline parser.
-		{"yikes ! Run\n", "space before exclamation mark", true},
-		{"no exclamation here\n", "space before exclamation mark", false},
+		{"yikes ! Run\n", "space before ! mark", true},
+		{"no exclamation here\n", "space before ! mark", false},
 		{"what ? That\n", "space before question mark", true},
 		{"what? That\n", "space before question mark", false},
 		{"lingering ** here\n", "unescaped bold markers", true},

@@ -215,7 +215,7 @@ func proseBlockChecks(f *MarkdownFile, blk ProseBlock) []Diagnostic {
 		emit(loc[0], "hyphen in numeric range (use en dash –)")
 	}
 	if strings.Contains(masked, " !") {
-		emit(strings.Index(masked, " !"), "space before exclamation mark")
+		emit(strings.Index(masked, " !"), "space before ! mark")
 	}
 	return diags
 }
