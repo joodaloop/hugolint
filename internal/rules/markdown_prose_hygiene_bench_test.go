@@ -3,6 +3,9 @@ package rules
 import (
 	"strings"
 	"testing"
+
+	"github.com/yuin/goldmark"
+	"github.com/yuin/goldmark/text"
 )
 
 // synthMarkdown builds a realistic-ish markdown body of roughly `lines` lines
@@ -68,5 +71,27 @@ func BenchmarkProseHygiene_Large(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		_ = (markdownProseHygiene{}).Check(mf, nil)
+	}
+}
+
+func BenchmarkFlattenProse(b *testing.B) {
+	for _, sz := range []struct {
+		name  string
+		lines int
+	}{
+		{"Small", 100},
+		{"Medium", 500},
+		{"Large", 2000},
+	} {
+		body := synthMarkdown(sz.lines)
+		parser := goldmark.New().Parser()
+		root := parser.Parse(text.NewReader(body))
+		b.Run(sz.name, func(b *testing.B) {
+			b.SetBytes(int64(len(body)))
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				_ = FlattenProse(body, root)
+			}
+		})
 	}
 }

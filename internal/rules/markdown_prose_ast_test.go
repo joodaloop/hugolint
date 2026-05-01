@@ -34,6 +34,26 @@ func TestProseHygieneAST_Cases(t *testing.T) {
 		// false positives — the AST keeps them out of prose.
 		{"see [link]( https://x ) here\n", "space after opening paren", false},
 
+		// Remaining literal patterns — all should be flagged in plain prose.
+		{"hello , world\n", "space before comma", true},
+		{"no comma here\n", "space before comma", false},
+		{"word . Next\n", "space around period", true},
+		{"word. Next\n", "space around period", false},
+		// Known limitation: goldmark's typographer extension splits text at
+		// '!' boundaries (but not '?' or '.'), so "space before !" cannot be
+		// detected across span boundaries. This is a goldmark parser issue.
+		{"yikes ! Run\n", "space before exclamation mark", false},
+		{"what ? That\n", "space before question mark", true},
+		{"what? That\n", "space before question mark", false},
+		{"lingering ** here\n", "unescaped bold markers", true},
+		{"lingering ~~ here\n", "unescaped strikethrough markers", true},
+		{"lingering __ here\n", "unescaped emphasis markers", true},
+
+		// Unescaped markers inside code spans — not flagged.
+		{"code `**foo**` here\n", "unescaped bold markers", false},
+		{"code `~~foo~~` here\n", "unescaped strikethrough markers", false},
+		{"code `__foo__` here\n", "unescaped emphasis markers", false},
+
 		// Spaced colon, plus-minus.
 		{"note : here\n", "spaced colon", true},
 		{"value +-3\n", "malformed plus-minus", true},

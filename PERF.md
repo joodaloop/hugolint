@@ -30,6 +30,30 @@ where build time is going.
 Markdown parsing is not free, but it is still well below the heavier rule
 costs.
 
+### FlattenProse (AST → ProseBlocks transformation)
+| Size | Throughput | Per-call | Allocs |
+|---|---|---|---|
+| Small  (~5 KB)   | 665 MB/s |  7.6 us  | 167 |
+| Medium (~26 KB)  | 601 MB/s | 42.1 us  | 809 |
+| Large  (~104 KB) | 525 MB/s | 192.8 us | 3 211 |
+
+`FlattenProse` walks the AST to extract inline prose spans and is per-file
+setup work consumed by the AST-side `prose-hygiene` rule and `balance`. It is
+fast (sub-200 us even on large files), so the bulk of the ~2.6 ms AST-side
+`prose-hygiene` cost is in the rule checks, not the transformation.
+
+### FlattenProse (AST → ProseBlocks transformation)
+| Size | Throughput | Per-call | Allocs |
+|---|---|---|---|
+| Small  (~5 KB)   | 665 MB/s |  7.6 us  | 167 |
+| Medium (~26 KB)  | 601 MB/s | 42.1 us  | 809 |
+| Large  (~104 KB) | 525 MB/s | 192.8 us | 3 211 |
+
+`FlattenProse` walks the AST to extract inline prose spans and is per-file
+setup work consumed by the AST-side `prose-hygiene` rule and `balance`. It is
+fast (sub-200 us even on large files), so the bulk of the ~2.6 ms AST-side
+`prose-hygiene` cost is in the rule checks, not the transformation.
+
 ### Markdown rules, ranked (medium ~26 KB input)
 | Rule | Throughput | Per-call | Allocs |
 |---|---|---|---|
@@ -38,28 +62,28 @@ costs.
 | `headings`        | 2 132 MB/s | 11.9 us  | 6 |
 | `url`             | 743 MB/s   | 34.0 us  | 150 |
 | `prose-hygiene`   | 84.7 MB/s  | 0.30 ms  | 1 077 |
-| `balance`         | —          | —        | — |
-
-The `balance` benchmark currently reports implausible numbers (2.25 ns, 0 allocs),
-suggesting it is hitting a no-op path. Historical: ~370 MB/s, 69.8 us, 359 allocs.
+| `balance`         | 859 MB/s   | 29.4 us  | 0 |
 
 `prose-hygiene` is the clear in-process Markdown bottleneck. It is now roughly:
 
-- 2.5x slower than `url`
-- 25x slower than `headings`
-- 34x slower than `formatting`
-- 50x slower than `image-alt`
+- 9.6x slower than `balance`
+- 8.3x slower than `url`
+- 24x slower than `headings`
+- 32x slower than `formatting`
+- 47x slower than `image-alt`
 
 Scaling for `prose-hygiene` is linear and consistent:
 
 | Size | Throughput | Per-call | Allocs |
 |---|---|---|---|
-| Small  (~5 KB)   | 81.1 MB/s | 0.062 ms | 217 |
-| Medium (~26 KB)  | 85.2 MB/s | 0.30 ms  | 1 077 |
-| Large  (~104 KB) | 85.9 MB/s | 1.18 ms  | 4 303 |
+| Small  (~5 KB)   | 88.4 MB/s | 0.057 ms | 217 |
+| Medium (~26 KB)  | 91.9 MB/s | 0.28 ms  | 1 077 |
+| Large  (~104 KB) | 92.6 MB/s | 1.09 ms  | 4 303 |
 
-Relative to the earlier baseline (~13.2 MB/s), this is about a 6.5x throughput
-improvement with about 5.5x fewer allocations.
+Note: this is the structural (line-by-line) `Markdown()` rule. The AST-based
+half (`MarkdownAST`) that checks ProseBlocks is heavier at ~2.6 ms for a medium
+file, but is largely redundant — most line content checks run in both.
+Consolidating them is a high-value optimization target.
 
 ### HTML rules, ranked (synthetic page with 100 internal pages / assets)
 | Rule | Per-call | Allocs |
@@ -141,13 +165,13 @@ Interpretation:
 ## Bottleneck ranking
 
 ### 1. `prose-hygiene` is the biggest in-process cost by a wide margin
-At ~0.30 ms for a medium file, it still dominates every other Go-side Markdown
-rule. This is the highest-leverage pure-Go optimization target.
+The structural (line-by-line) half clocks in at ~0.28 ms for a medium file, but
+the AST-based half weighs in at ~2.6 ms. The two halves have overlapping
+coverage (many per-line checks happen in both), so consolidating them into a
+single pass is the highest-leverage pure-Go optimization target.
 
-The optimizations implemented (fused ReplaceAllString passes, cheap byte/substr
-prechecks) brought it down from ~1.96 ms to ~0.30 ms — about a 6.5x improvement.
-The `***` ambiguity check was removed. The literal lead-byte prefilter was
-tried but not kept.
+The 6.5x improvement over earlier baselines came from fused ReplaceAllString
+passes, cheap byte/substr prechecks, and removing the `***` ambiguity check.
 
 ### 2. `aspell` is the biggest cost when spelling is enabled
 A ~5.1 ms per-file startup tax is large enough that on typical Markdown sizes
@@ -213,11 +237,9 @@ reporting is tiny. These are not the first places to spend optimization effort.
 
 If the goal is wall-clock speed, the priority order is now:
 
-1. Replace per-file `aspell` startup with batching or a long-lived process.
-2. Decide whether `tidy` needs caching or batching for large sites.
-3. Remove redundant frontmatter parsing.
-4. Clean up duplicated URL parsing and, later, shared AST walking.
-
-`prose-hygiene` at ~0.30 ms/medium-file is no longer the dominant bottleneck.
-External process startup (`aspell` at 5.1 ms, `tidy` at 1.8 ms) now dwarfs
-all in-process Go costs combined.
+1. Consolidate the two `prose-hygiene` halves (line-by-line + AST) into one pass.
+   The AST half at 2.6 ms/medium-file is the single largest in-process cost.
+2. Replace per-file `aspell` startup with batching or a long-lived process.
+3. Decide whether `tidy` needs caching or batching for large sites.
+4. Remove redundant frontmatter parsing.
+5. Clean up duplicated URL parsing and, later, shared AST walking.

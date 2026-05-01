@@ -13,12 +13,14 @@ import (
 func benchMarkdownFile(lines int) *MarkdownFile {
 	body := synthMarkdown(lines)
 	parser := goldmark.New().Parser()
+	astRoot := parser.Parse(text.NewReader(body))
 	return &MarkdownFile{
 		Path:          "bench.md",
 		Content:       body,
 		Body:          body,
-		AST:           parser.Parse(text.NewReader(body)),
+		AST:           astRoot,
 		BodyStartLine: 1,
+		ProseBlocks:   FlattenProse(body, astRoot),
 	}
 }
 

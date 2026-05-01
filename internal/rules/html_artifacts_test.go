@@ -16,6 +16,7 @@ func TestHTMLArtifacts_LeakedPatterns(t *testing.T) {
 		{"<— arrow", "literal '<—'"},
 		{"arrow —>", "literal '—>'"},
 		{"<q>quote</q>", "literal '<q>'"},
+		{"stray </q> only", "literal '</q>'"},
 		{"</q< broken", "literal '</q<'"},
 		{"<del>strike</del>", "literal '<del>'"},
 		{"unparsed ** bold", "unparsed bold"},
