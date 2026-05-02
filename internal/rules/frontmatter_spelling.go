@@ -5,7 +5,7 @@ import (
 	"sort"
 	"sync"
 
-	"github.com/joodaloop/hugolint/internal/config"
+	"github.com/joodaloop/joodalint/internal/config"
 )
 
 func init() {

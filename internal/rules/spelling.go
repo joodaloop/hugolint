@@ -11,7 +11,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/joodaloop/hugolint/internal/config"
+	"github.com/joodaloop/joodalint/internal/config"
 )
 
 // Hyphenated suffixes stripped from words before aspell sees them
@@ -23,6 +23,7 @@ type speller struct {
 	hyphenSuffix *regexp.Regexp
 	ordinal      *regexp.Regexp
 	unitPrefix   *regexp.Regexp
+	username     *regexp.Regexp
 	aspellPath   string
 	personalPath string
 	initErr      error
@@ -38,7 +39,7 @@ func (s *speller) ensureInit(cfg *config.Config) {
 func (s *speller) init(cfg *config.Config) {
 	path, err := exec.LookPath("aspell")
 	if err != nil {
-		fmt.Println("hugolint: aspell not installed - skipping spell-checking. (brew install aspell)")
+		fmt.Println("joodalint: aspell not installed - skipping spell-checking. (brew install aspell)")
 		s.enabled = false
 		return
 	}
@@ -70,7 +71,7 @@ func (s *speller) init(cfg *config.Config) {
 	for _, w := range words {
 		fmt.Fprintln(&buf, w)
 	}
-	s.personalPath = filepath.Join(os.TempDir(), "hugolint-aspell.pws")
+	s.personalPath = filepath.Join(os.TempDir(), "joodalint-aspell.pws")
 	if err := os.WriteFile(s.personalPath, buf.Bytes(), 0o644); err != nil {
 		s.initErr = fmt.Errorf("writing personal dict: %v", err)
 		return
@@ -86,6 +87,7 @@ func (s *speller) init(cfg *config.Config) {
 	// unit like "50kgg" still gets caught). RE2 lacks lookahead, so we
 	// capture the trailing letter and put it back via $1.
 	s.unitPrefix = regexp.MustCompile(`\b\d+([a-zA-Z])`)
+	s.username = regexp.MustCompile(`@[A-Za-z0-9_-]+`)
 
 	s.enabled = true
 }
@@ -96,6 +98,7 @@ func (s *speller) unknown(body []byte) (map[string]bool, error) {
 	body = s.hyphenSuffix.ReplaceAll(body, []byte(""))
 	body = s.ordinal.ReplaceAll(body, []byte(""))
 	body = s.unitPrefix.ReplaceAll(body, []byte("$1"))
+	body = s.username.ReplaceAll(body, []byte(""))
 
 	cmd := exec.Command(s.aspellPath, "--lang=en", "--encoding=utf-8", "--mode=markdown", "--personal="+s.personalPath, "list")
 	cmd.Stdin = bytes.NewReader(body)

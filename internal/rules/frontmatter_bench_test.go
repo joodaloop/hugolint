@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/joodaloop/hugolint/internal/config"
+	"github.com/joodaloop/joodalint/internal/config"
 )
 
 func synthFrontmatter(fields int) []byte {

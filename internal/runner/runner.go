@@ -17,8 +17,8 @@ import (
 	"github.com/yuin/goldmark/extension"
 	"github.com/yuin/goldmark/text"
 
-	"github.com/joodaloop/hugolint/internal/config"
-	"github.com/joodaloop/hugolint/internal/rules"
+	"github.com/joodaloop/joodalint/internal/config"
+	"github.com/joodaloop/joodalint/internal/rules"
 )
 
 func Markdown(cfg *config.Config) (int, error) {
@@ -85,6 +85,17 @@ func Markdown(cfg *config.Config) (int, error) {
 	})
 
 	report(diags, root)
+
+	if len(paths) < 10 {
+		color := stdoutIsTTY()
+		warn := "WARNING: Fewer than 10 posts detected, author is linting when they should be writing."
+		if color {
+			fmt.Printf("\n\x1b[1;33m%s\x1b[0m\n", warn)
+		} else {
+			fmt.Printf("\n%s\n", warn)
+		}
+	}
+
 	return len(diags), nil
 }
 
@@ -108,6 +119,8 @@ func Build(cfg *config.Config, root string) (int, error) {
 		return 0, err
 	}
 	diags = append(diags, rules.ReportOrphans(allFiles, ctx)...)
+
+	rules.ReportJSMetrics(allFiles, ctx, stdoutIsTTY())
 
 	tidyDiags, err := tidyDiagnostics(root)
 	if err != nil {

@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"sync"
 
-	"github.com/joodaloop/hugolint/internal/config"
+	"github.com/joodaloop/joodalint/internal/config"
 	"github.com/yuin/goldmark/ast"
 )
 
@@ -87,11 +87,11 @@ type Asset struct {
 }
 
 type MetaTag struct {
-	Name     string // value of name=""
-	Property string // value of property=""
+	Name      string // value of name=""
+	Property  string // value of property=""
 	HTTPEquiv string // value of http-equiv=""
-	Charset  string // value of charset=""
-	Content  string // value of content=""
+	Charset   string // value of charset=""
+	Content   string // value of content=""
 }
 
 type HeadLink struct {

@@ -9,7 +9,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/joodaloop/hugolint/internal/rules"
+	"github.com/joodaloop/joodalint/internal/rules"
 )
 
 // tidyDiagnostics shells out to tidy-html5 for every .html file under root.
@@ -17,12 +17,12 @@ import (
 // HTML4-era build, so `lint build` stays usable without the dependency.
 func tidyDiagnostics(root string) ([]rules.Diagnostic, error) {
 	if _, err := exec.LookPath("tidy"); err != nil {
-		fmt.Println("hugolint: tidy not installed — skipping HTML validity check. (brew install tidy-html5)")
+		fmt.Println("joodalint: tidy not installed — skipping HTML validity check. (brew install tidy-html5)")
 		return nil, nil
 	}
 	if out, err := exec.Command("tidy", "--version").CombinedOutput(); err == nil {
 		if bytes.Contains(out, []byte("Apple Inc.")) {
-			fmt.Println("hugolint: Apple's /usr/bin/tidy is HTML4-era — skipping. (brew install tidy-html5)")
+			fmt.Println("joodalint: Apple's /usr/bin/tidy is HTML4-era — skipping. (brew install tidy-html5)")
 			return nil, nil
 		}
 	}

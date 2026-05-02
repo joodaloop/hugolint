@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/joodaloop/hugolint/internal/config"
+	"github.com/joodaloop/joodalint/internal/config"
 )
 
 func benchSpellerCfg(b *testing.B) *config.Config {

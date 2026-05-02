@@ -3,7 +3,7 @@ package rules
 import (
 	"testing"
 
-	"github.com/joodaloop/hugolint/internal/config"
+	"github.com/joodaloop/joodalint/internal/config"
 )
 
 // goodMetaFile returns an HTMLFile with a complete, valid head metadata set

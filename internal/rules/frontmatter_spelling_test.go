@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/joodaloop/hugolint/internal/config"
+	"github.com/joodaloop/joodalint/internal/config"
 )
 
 func spellingCfg(t *testing.T, words ...string) *config.Config {
@@ -102,4 +102,3 @@ func TestFrontmatterSpelling_ID(t *testing.T) {
 		t.Fatal("wrong ID")
 	}
 }
-

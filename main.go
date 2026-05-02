@@ -6,10 +6,10 @@ import (
 	"io/fs"
 	"os"
 
-	"github.com/joodaloop/hugolint/internal/config"
-	"github.com/joodaloop/hugolint/internal/runner"
+	"github.com/joodaloop/joodalint/internal/config"
+	"github.com/joodaloop/joodalint/internal/runner"
 
-	_ "github.com/joodaloop/hugolint/internal/rules"
+	_ "github.com/joodaloop/joodalint/internal/rules"
 )
 
 func main() {
@@ -37,6 +37,11 @@ func main() {
 			root = os.Args[2]
 		}
 		n, err = runner.Build(cfg, root)
+	case "help":
+		if len(os.Args) >= 3 {
+			cfg.Paths.MarkdownRoot = os.Args[2]
+		}
+		err = runner.Help(cfg)
 	default:
 		usage()
 		os.Exit(2)
@@ -63,5 +68,5 @@ func loadConfig(path string) (*config.Config, error) {
 }
 
 func usage() {
-	fmt.Fprintln(os.Stderr, "usage: hugolint md [dir] | hugolint build [dir]")
+	fmt.Fprintln(os.Stderr, "usage: joodalint md [dir] | joodalint build [dir] | joodalint help [dir]")
 }

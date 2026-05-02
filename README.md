@@ -1,8 +1,8 @@
-# hugolint
+# joodalint
 the sanest linter in the world
 
 ## CONFIGURATION
-Put this in the folder from where you run `hugolint md` or `hugolint build`
+Put this in the folder from where you run `joodalint md` or `joodalint build`
 
 (Note: You don't have to specify a title in your schemas, our linting requires *all* your pages have one)
 
@@ -50,13 +50,21 @@ index_pages:
 
 ## WHAT DOES IT DO?
 
+### Helps you use your personal site better
+- [x] Point out lack of posts 
+  - [ ] And suggest pages that could be added instead
+- [ ] lint for llm phrases with a shaming message
+- [x] Graph frequency of publishing
+- [x] The linter scans the _drafts directory. If there are more drafts than published posts, it points you to the most written ones.
+
 ### Frontmatter lint for anything that doesn't match the declared schema
 - [x] Always check for title and description
-  - [ ] Description recommended to be under (Telegram: 340, Whatsapp: 230, Google: 160)
+  - [ ] Description recommended to be under 320 characters (Telegram: 340, Whatsapp: 230, Google: 160)
 - [x] Warn if fields found that aren't in the config schema
 - [x] Spellcheck text fields
 
-### Build lints (`hugolint build`)
+### Build lints (`joodalint build`)
+- [x] Throw a warning on excessive Javascript
 - [x] Checks site build for orphan files (not linked to from anywhere)
 - [x] Check for presense of essential meta tags
 - [x] Check that all internal links point to an existing file (`<a>` href, `<img>` src, `<link>`, `<script src>`, `<video>/<audio>` etc.)

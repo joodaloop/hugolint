@@ -1,4 +1,4 @@
-module github.com/joodaloop/hugolint
+module github.com/joodaloop/joodalint
 
 go 1.25.0
 
