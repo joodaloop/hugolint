@@ -87,7 +87,11 @@ func (s *speller) init(cfg *config.Config) {
 	// unit like "50kgg" still gets caught). RE2 lacks lookahead, so we
 	// capture the trailing letter and put it back via $1.
 	s.unitPrefix = regexp.MustCompile(`\b\d+([a-zA-Z])`)
-	s.username = regexp.MustCompile(`@[A-Za-z0-9_-]+`)
+	// Only strip @handles preceded by whitespace or start-of-text, so
+	// email addresses like "judah@joodaloop.com" aren't mangled into
+	// "judah". RE2 lacks lookbehind, so we capture the leading boundary
+	// and put it back via $1.
+	s.username = regexp.MustCompile(`(^|\s)@[A-Za-z0-9_-]+`)
 
 	s.enabled = true
 }
@@ -98,7 +102,7 @@ func (s *speller) unknown(body []byte) (map[string]bool, error) {
 	body = s.hyphenSuffix.ReplaceAll(body, []byte(""))
 	body = s.ordinal.ReplaceAll(body, []byte(""))
 	body = s.unitPrefix.ReplaceAll(body, []byte("$1"))
-	body = s.username.ReplaceAll(body, []byte(""))
+	body = s.username.ReplaceAll(body, []byte("$1"))
 
 	cmd := exec.Command(s.aspellPath, "--lang=en", "--encoding=utf-8", "--mode=markdown", "--personal="+s.personalPath, "list")
 	cmd.Stdin = bytes.NewReader(body)
