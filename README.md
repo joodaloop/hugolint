@@ -21,7 +21,7 @@ spelling:
 # frontmatter schema for each section of your site
 sections:
   root:
-    description: { type: string, min: 1, max: 160, required: true }
+    description: { type: string, required: true }
     date: { type: date }
     type: { type: enum, values: [list, meta] }
     topics: { type: list, items: enum, values: [design, misc, personal, practical, software, websites] }
@@ -31,7 +31,7 @@ sections:
     aliases: { type: list }
 
   writing:
-    description: { type: string, min: 1, max: 160, required: true }
+    description: { type: string, required: true }
     date: { type: date, required: true }
     type: { type: enum, required: true, values: [essay, list, notebook] }
     topics: { type: list, required: true, items: enum, values: [design, misc, personal, practical, software, websites] }
@@ -58,8 +58,8 @@ index_pages:
 - [x] The linter scans the _drafts directory. If there are more drafts than published posts, it points you to the most written ones.
 
 ### Frontmatter lint for anything that doesn't match the declared schema
-- [x] Always check for title and description
-  - [ ] Description recommended to be under 320 characters (Telegram: 340, Whatsapp: 230, Google: 160)
+- [x] Always check for title
+- [x] Description under 320 characters (Telegram: 340, Whatsapp: 230, Google: 160)
 - [x] Warn if fields found that aren't in the config schema
 - [x] Spellcheck text fields
 
@@ -106,7 +106,7 @@ index_pages:
 ### AST-prose lints
 - [x] Existence of ** \`~~ ==
 - [x] Spellcheck on prose with aspell with an personal dictionary
-  - [ ] Special case for username checks (@loquitur_ponte)
+  - [x] Special case for username checks (@loquitur_ponte)
 - [x] Suffix handling (2nd, 50kg vs 50 kg)
 - [x] Unbalanced parens and quotes
 - [x] Repetitions

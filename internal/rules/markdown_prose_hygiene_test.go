@@ -85,8 +85,6 @@ func TestProseHygiene_Cases(t *testing.T) {
 		{"plain ascii text\nwith émojis café\n", "invisible character", false},
 
 		// Structural literal needles.
-		{"foo --- bar\n", "literal triple hyphen", true},
-		{"text\n\n---\n\nmore\n", "literal triple hyphen", false},
 		{"link [foo](//x.com)\n", "protocol-relative link", true},
 		{` " ](url)` + "\n", "quote glued to link", true},
 

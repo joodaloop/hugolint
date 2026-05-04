@@ -268,14 +268,14 @@ func proseSpanChecks(f *MarkdownFile, sp ProseSpan) []Diagnostic {
 	if strings.ContainsAny(text, "–-") && spacedDashNum.MatchString(text) {
 		emit("space between hyphen/en-dash and number ( – 10)")
 	}
-	if missingSpacePunct.MatchString(text) {
+	if missingSpacePunct.MatchString(maskBareURLs(text)) {
 		emit("missing space after punctuation")
 	}
 	return diags
 }
 
 // proseQuoteChecks consolidates all "what's wrong with the quotes in
-// this block" logic: floating/orphaned quote, padded quote, and the
+// this block" logic: spaces around quote, orphaned quote, padded quote, and the
 // odd-count balance check that previously lived in markdown_balance.
 // Concatenating across spans is required for the balance check to
 // recognise pairs that span inline elements (e.g. `"see [foo](u)"`).
@@ -292,10 +292,16 @@ func proseQuoteChecks(f *MarkdownFile, blk ProseBlock) []Diagnostic {
 	rawText := raw.String()
 
 	if strings.Contains(rawText, "\"") {
-		if floatingQuote.MatchString(rawText) {
+		if spacesAroundQuote.MatchString(rawText) {
 			diags = append(diags, Diagnostic{
 				Path: f.Path, Line: f.LineAt(blk.Spans[0].Offset), Rule: "prose-hygiene",
 				Message: `spaces around quote ( " )`,
+			})
+		}
+		if orphanedQuote.MatchString(rawText) {
+			diags = append(diags, Diagnostic{
+				Path: f.Path, Line: f.LineAt(blk.Spans[0].Offset), Rule: "prose-hygiene",
+				Message: "orphaned quote",
 			})
 		}
 		if paddedQuote.MatchString(rawText) {

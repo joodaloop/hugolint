@@ -96,6 +96,18 @@ func TestFrontmatter_StringMinMax(t *testing.T) {
 	}
 }
 
+func TestFrontmatter_TextIgnoresMinMax(t *testing.T) {
+	ctx := fmCtxWithSection("root", map[string]config.FieldSpec{
+		"title":   {Type: "string"},
+		"summary": {Type: "text", Min: 10, Max: 20},
+	})
+	src := "---\ntitle: hi\ndescription: ok desc\nsummary: tiny\n---\nbody\n"
+	d := markdownFrontmatter{}.Check(fmFile("content/x.md", src), ctx)
+	if len(d) != 0 {
+		t.Errorf("want text min/max ignored, got %v", messages(d))
+	}
+}
+
 func TestFrontmatter_EnumAndList(t *testing.T) {
 	ctx := fmCtxWithSection("root", map[string]config.FieldSpec{
 		"type":   {Type: "enum", Values: []string{"post", "note"}},
@@ -175,7 +187,7 @@ func TestFrontmatter_DescriptionTooLong(t *testing.T) {
 	}
 	src := "---\ntitle: hi\ndescription: " + long + "\n---\nbody\n"
 	d := markdownFrontmatter{}.Check(fmFile("content/x.md", src), ctx)
-	if !containsMsg(d, "above max 160") {
+	if !containsMsg(d, "above max 320") {
 		t.Errorf("want description-too-long, got %v", messages(d))
 	}
 }

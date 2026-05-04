@@ -155,7 +155,7 @@ func ParseFrontmatterYAML(raw []byte) (map[string]any, error) {
 
 func validate(name string, val any, spec config.FieldSpec) string {
 	switch spec.Type {
-	case "string", "text":
+	case "string":
 		s, ok := val.(string)
 		if !ok {
 			return fmt.Sprintf("field %q: expected string, got %s", name, kindOf(val))
@@ -177,6 +177,10 @@ func validate(name string, val any, spec config.FieldSpec) string {
 			if len([]rune(s)) > int(max) {
 				return fmt.Sprintf("field %q: length %d above max %d", name, len([]rune(s)), int(max))
 			}
+		}
+	case "text":
+		if _, ok := val.(string); !ok {
+			return fmt.Sprintf("field %q: expected string, got %s", name, kindOf(val))
 		}
 	case "number":
 		n, ok := asFloat(val)

@@ -25,6 +25,8 @@ func TestProseHygieneAST_Cases(t *testing.T) {
 
 		// Literal patterns moved to AST.
 		{"hello —— world\n", "double em dash", true},
+		{"foo --- bar\n", "literal triple hyphen", true},
+		{"text\n\n---\n\nmore\n", "literal triple hyphen", false},
 		{"it's '' a thing\n", "double apostrophe", true},
 		{"`` two\n", "double backtick", true},
 		{"foo,, bar\n", "double comma", true},
@@ -85,11 +87,15 @@ func TestProseHygieneAST_Cases(t *testing.T) {
 		{"single em — dash\n", "malformed dash sequence", false},
 		{"single en – dash\n", "malformed dash sequence", false},
 
-		// Floating quote / padded quote.
-		{"hello \" world\n", "floating/orphaned quote", true},
-		{"orphan \"\n", "floating/orphaned quote", true},
-		{"he said \"hello\" to me\n", "floating/orphaned quote", false},
-		{"<a href=\"url\">link</a>\n", "floating/orphaned quote", false},
+		// Spaces around quote / orphaned quote / padded quote.
+		{"hello \" world\n", "spaces around quote", true},
+		{"hello \" world\n", "orphaned quote", false},
+		{"orphan \"\n", "orphaned quote", true},
+		{"orphan \"\n", "spaces around quote", false},
+		{"he said \"hello\" to me\n", "spaces around quote", false},
+		{"he said \"hello\" to me\n", "orphaned quote", false},
+		{"<a href=\"url\">link</a>\n", "spaces around quote", false},
+		{"<a href=\"url\">link</a>\n", "orphaned quote", false},
 		{`he said " hello " to me` + "\n", "padded spaces inside quotation marks", true},
 		{`he said "hello" to me` + "\n", "padded spaces inside quotation marks", false},
 		{`<a href="url">x</a>` + "\n", "padded spaces inside quotation marks", false},

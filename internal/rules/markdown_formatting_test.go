@@ -9,13 +9,13 @@ func TestFormattingShortSpansOK(t *testing.T) {
 }
 
 func TestFormattingLongItalic(t *testing.T) {
-	// 101-character italic span — should warn.
+	// 121-character italic span — should warn.
 	text := "*" + repeat("a", 121) + "*\n"
 	diags := markdownFormatting{}.Check(mdFile(text), nil)
 	if len(diags) != 1 {
 		t.Fatalf("want 1 diag, got %d: %v", len(diags), messages(diags))
 	}
-	if !containsMsg(diags, "emphasis span 101 chars") {
+	if !containsMsg(diags, "emphasis span 121 chars") {
 		t.Fatalf("want emphasis warning, got %v", messages(diags))
 	}
 	if diags[0].Line != 1 {

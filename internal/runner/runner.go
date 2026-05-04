@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 
@@ -489,6 +490,7 @@ func report(diags []rules.Diagnostic, root string) {
 		}
 	}
 
+	tw := termWidth()
 	for i, d := range diags {
 		loc := locs[i]
 		var locStr string
@@ -503,7 +505,14 @@ func report(diags []rules.Diagnostic, root string) {
 		}
 		pad := strings.Repeat(" ", locWidth-visibleLen(loc))
 		ruleStr := paint(fmt.Sprintf("%-*s", ruleWidth, d.Rule), magenta)
-		fmt.Printf("%s%s  %s  %s\n", locStr, pad, ruleStr, d.Message)
+
+		prefixWidth := locWidth + 2 + ruleWidth + 2
+		if tw > 0 && prefixWidth+len(d.Message) > tw {
+			fmt.Printf("%s%s  %s\n", locStr, pad, ruleStr)
+			fmt.Printf("%s%s\n", strings.Repeat(" ", 2), d.Message)
+		} else {
+			fmt.Printf("%s%s  %s  %s\n", locStr, pad, ruleStr, d.Message)
+		}
 	}
 
 	if len(diags) > 0 {
@@ -518,6 +527,15 @@ func report(diags []rules.Diagnostic, root string) {
 }
 
 func visibleLen(s string) int { return len(s) }
+
+func termWidth() int {
+	if s := os.Getenv("COLUMNS"); s != "" {
+		if w, err := strconv.Atoi(s); err == nil && w > 0 {
+			return w
+		}
+	}
+	return 0
+}
 
 func stdoutIsTTY() bool {
 	fi, err := os.Stdout.Stat()
